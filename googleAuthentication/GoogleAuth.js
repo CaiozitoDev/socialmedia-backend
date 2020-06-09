@@ -1,4 +1,4 @@
-/* const dotenv = require('dotenv').config()
+const dotenv = require('dotenv').config()
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 const findOrCreate = require('mongoose-findorcreate')
@@ -15,25 +15,23 @@ passport.serializeUser((user, done) => {
 })
 
 passport.deserializeUser(function(id, done) {
-    usersCollection.findById(id, function(err, user) {
-      done(err, user);
-    });
+    done(err, user);
   });
 
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,      // CHAVES DE AUTENTICAÇÃO CEDIDAS PELA API CRIADA NO GOOGLE DEVELOPERS WEBSITE
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/home",  // PRA ONDE O GOOGLE VAI RETORNAR QUANDO AUTENTICAR A CONTA NA SESSÃO DE LOGIN
+    callbackURL: "/auth/google/finish",  // PRA ONDE O GOOGLE VAI RETORNAR QUANDO AUTENTICAR A CONTA NA SESSÃO DE LOGIN
     },
     function(accessToken, refreshToken, profile, cb) {
       console.log(profile)
+      
 
-
-        usersCollection.findOrCreate({ googleId: profile.id }, function (err, user) {  // FINALMENTE USANDO A FUNÇÃO CRIADA COM O PACOTE findOrCreate PRA
+        /* usersCollection.findOrCreate({ googleId: profile.id }, function (err, user) {  // FINALMENTE USANDO A FUNÇÃO CRIADA COM O PACOTE findOrCreate PRA
             console.log('oooooooooooooooooosdfgsdfgsdfgsdfg')
             return cb(err, user);                                                       // NO BANCO DE DADOS O PROFILE ID DA PESSOA QUE LOGOU COM A CONTA 
-        });
+        }); */
     }
 ))
 
@@ -50,4 +48,3 @@ function(req, res) {
   res.redirect('/home');
 })
 
- */

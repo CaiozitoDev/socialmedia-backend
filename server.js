@@ -29,12 +29,24 @@ mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifi
 
 
 
+
+    
+passport.serializeUser((user, done) => {
+    done(null, user.id)
+})
+
+passport.deserializeUser(function(id, done) {
+    done(err, user);
+  });
+
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,      // CHAVES DE AUTENTICAÇÃO CEDIDAS PELA API CRIADA NO GOOGLE DEVELOPERS WEBSITE
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "http://localhost:3000/google/finish"  // PRA ONDE O GOOGLE VAI RETORNAR QUANDO AUTENTICAR A CONTA NA SESSÃO DE LOGIN
+        callbackURL: "/google/finish"  // PRA ONDE O GOOGLE VAI RETORNAR QUANDO AUTENTICAR A CONTA NA SESSÃO DE LOGIN
         },
         function(accessToken, refreshToken, profile, cb) {
+            console.log(accessToken)
+            console.log(refreshToken)
             console.log(profile)
     
             return cb(err, user);                                                       // NO BANCO DE DADOS O PROFILE ID DA PESSOA QUE LOGOU COM A CONTA 
