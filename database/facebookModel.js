@@ -1,17 +1,19 @@
 const mongoose = require('mongoose')
 
-const userSchema = new mongoose.Schema({
+const facebookSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
         minlength: 4
     },
-    password: {
+    userId: {
         type: String,
         required: true,
         minlength: 4
     },
-    userUrl: String,
+    userUrl: {
+        type: String,
+    },
 })
 
-module.exports = mongoose.model('usersCollection', userSchema)
+module.exports = mongoose.model('facebookCollection', facebookSchema)

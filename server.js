@@ -5,8 +5,6 @@ const mongoose = require('mongoose')
 const session = require('express-session')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const passport = require('passport')
-const GoogleStrategy = require('passport-google-oauth20').Strategy
 
 const app = express()
 
@@ -17,58 +15,14 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }))
-app.use(passport.initialize())
-app.use(passport.session())
 
 const postCollection = require('./database/postModel')
 const usersCollection = require('./database/userModel')
+const facebookCollection = require('./database/facebookModel')
 
 mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifiedTopology: true})
     .then(() => {console.log('MongoDB Connected')})
     .catch((err) => {console.log(err)})
-
-
-
-
-    
-passport.serializeUser((user, done) => {
-    done(null, user.id)
-})
-
-passport.deserializeUser(function(id, done) {
-    done(err, user);
-  });
-
-    passport.use(new GoogleStrategy({
-        clientID: process.env.GOOGLE_CLIENT_ID,      // CHAVES DE AUTENTICAÇÃO CEDIDAS PELA API CRIADA NO GOOGLE DEVELOPERS WEBSITE
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/google/finish"  // PRA ONDE O GOOGLE VAI RETORNAR QUANDO AUTENTICAR A CONTA NA SESSÃO DE LOGIN
-        },
-        function(accessToken, refreshToken, profile, cb) {
-            console.log(accessToken)
-            console.log(refreshToken)
-            console.log(profile)
-    
-            return cb(err, user);                                                       // NO BANCO DE DADOS O PROFILE ID DA PESSOA QUE LOGOU COM A CONTA 
-        }
-    ))
-    
-    app.get('/google',
-        passport.authenticate('google', { scope: ['profile'] }))   // SERVE PRA CHAMAR A API DO GOOGLE DE LOGIN (COM O ESCOPO DE CONTAS)
-    
-    
-    app.get('/google/finish', 
-    passport.authenticate('google', { failureRedirect: 'http://localhost:3000/login' }),  // RESPOSTA DO SERVER QUANDO O GOOGLE AUTENTICAR E REDIRECIONAR PARA ESSA ROTA
-    function(req, res) {
-      // Successful authentication, redirect secrets.
-    
-        console.log('chegou no finish')
-      res.redirect('/home');
-    })
-
-
-
-
 
 
 app.post('/registerdata', (req, res) => {
@@ -107,7 +61,7 @@ app.post('/registerdata', (req, res) => {
 })
 
 app.post('/logindata', (req, res) => {
-    const {username, password} = req.body
+    const {username, password, userUrl} = req.body
 
     if(username !== '' && password !== '') {
         usersCollection.findOne({username: username}, (err, doc) => {
@@ -146,19 +100,58 @@ app.post('/auth', (req, res) => {
                         if(doc) {
                             res.send({message: 'Ok', authorized: true})
                         } else {
-                            res.send({message: 'User not found by token', authorized: false})
+                            facebookCollection.findById({_id: decoded.db_user_id}, (fberror, fbdoc) => {
+                                if(!fberror) {
+                                    if(fbdoc) {
+                                        res.send({message: 'Ok', authorized: true})
+                                    } else {
+                                        res.send({message: 'User not found by token', authorized: false})
+                                    }
+                                } else {
+                                    res.send({message: fberror, authorized: false})
+                                }
+                            })
                         }
                     } else {
                         res.send({message: error, authorized: false})
                     }
                 })
             } else {
-                res.send({message: err, authorized: false})
+                res.send({message: 'There is a error with token', authorized: false})
             }
         })
     } else {
         res.send({message: 'Token not found', authorized: false})
     }
+})
+
+
+
+app.post('/facebook', (req, res) => {
+    const {name, userID, url} = req.body
+
+    facebookCollection.findOne({userId: userID}, (err, doc) => {
+        if(!err) {
+            if(doc) {
+                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
+                res.send({redirect: true, token: generatedToken})
+            } else {
+                const newUser = new facebookCollection({
+                    username: name,
+                    userId: userID,
+                    userUrl: url
+                })
+
+                const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
+
+                newUser.save(() => {
+                    res.send({redirect: true, token: generatedToken})
+                })
+            }
+        } else {
+            console.log(err)
+        }
+    })
 })
 
 
