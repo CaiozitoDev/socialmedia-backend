@@ -28,7 +28,6 @@ mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifi
     .then(() => {console.log('MongoDB Connected')})
     .catch((err) => {console.log(err)})
 
-
 app.post('/registerdata', upload.single('fileimage'), (req, res) => {
     const {username, password} = req.body
     const profilePhoto = req.file
@@ -66,8 +65,10 @@ app.post('/registerdata', upload.single('fileimage'), (req, res) => {
     }
 })
 
-app.post('/logindata', (req, res) => {
+app.post('/logindata', upload.any(), (req, res) => {
     const {username, password} = req.body
+
+    console.log(req.body)
 
     if(username !== '' && password !== '') {
         usersCollection.findOne({username: username}, (err, doc) => {
