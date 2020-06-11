@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 const session = require('express-session')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const multer = require('multer')
 
 const app = express()
 
@@ -16,6 +17,9 @@ app.use(session({
     saveUninitialized: false
 }))
 
+let upload = multer()
+
+
 const postCollection = require('./database/postModel')
 const usersCollection = require('./database/userModel')
 const facebookCollection = require('./database/facebookModel')
@@ -25,9 +29,10 @@ mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifi
     .catch((err) => {console.log(err)})
 
 
-app.post('/registerdata', (req, res) => {
+app.post('/registerdata', upload.single('fileimage'), (req, res) => {
     const {username, password} = req.body
-    console.log(req.body)
+    const profilePhoto = req.file
+
     if(username !== '' && password !== '') {
         usersCollection.findOne({username: username}, (err, doc) => {
             if(!err) {
@@ -39,12 +44,13 @@ app.post('/registerdata', (req, res) => {
                             const newUser = new usersCollection({
                                 username: username,
                                 password: hash,
+                                userPhoto: profilePhoto
                             })
 
                             const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
 
-                            newUser.save(() => {
-                                res.send({redirect: true, token: generatedToken})
+                            newUser.save((saveError) => {
+                                saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
                             })
                         } else {
                             console.log(error)
@@ -61,7 +67,7 @@ app.post('/registerdata', (req, res) => {
 })
 
 app.post('/logindata', (req, res) => {
-    const {username, password, userUrl} = req.body
+    const {username, password} = req.body
 
     if(username !== '' && password !== '') {
         usersCollection.findOne({username: username}, (err, doc) => {
@@ -138,14 +144,14 @@ app.post('/facebook', (req, res) => {
             } else {
                 const newUser = new facebookCollection({
                     username: name,
-                    userId: userID,
+                    fbId: userID,
                     userUrl: url
                 })
 
                 const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
 
-                newUser.save(() => {
-                    res.send({redirect: true, token: generatedToken})
+                newUser.save((saveError) => {
+                    saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
                 })
             }
         } else {
@@ -155,13 +161,10 @@ app.post('/facebook', (req, res) => {
 })
 
 
-
-app.get('/logout', function(req, res) {
-    req.logOut()
-
-    res.redirect('/register')
+app.post('/fodase', (req, res) => {
+    console.log(req.body)
+    console.log(req.files)
 })
-
 
 
 app.get('/teste', function(req, res) {

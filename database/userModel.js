@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: 4
     },
-    userUrl: String,
+    userPhoto: Object
 })
 
 module.exports = mongoose.model('usersCollection', userSchema)

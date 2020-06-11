@@ -6,7 +6,7 @@ const facebookSchema = new mongoose.Schema({
         required: true,
         minlength: 4
     },
-    userId: {
+    fbId: {
         type: String,
         required: true,
         minlength: 4
