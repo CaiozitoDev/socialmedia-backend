@@ -6,6 +6,7 @@ const session = require('express-session')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
+const base64ArrayBuffer = require('base64-arraybuffer')
 
 const app = express()
 
@@ -19,15 +20,16 @@ app.use(session({
 
 let upload = multer()
 
-
 const postCollection = require('./database/postModel')
 const usersCollection = require('./database/userModel')
-const facebookCollection = require('./database/facebookModel')
 
 mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifiedTopology: true})
     .then(() => {console.log('MongoDB Connected')})
     .catch((err) => {console.log(err)})
 
+
+
+/* ROTAS DE AUTENTICAÇÃO */
 app.post('/registerdata', upload.single('fileimage'), (req, res) => {
     const {username, password} = req.body
     const profilePhoto = req.file
@@ -68,8 +70,6 @@ app.post('/registerdata', upload.single('fileimage'), (req, res) => {
 app.post('/logindata', upload.any(), (req, res) => {
     const {username, password} = req.body
 
-    console.log(req.body)
-
     if(username !== '' && password !== '') {
         usersCollection.findOne({username: username}, (err, doc) => {
             if(!err) {
@@ -78,6 +78,7 @@ app.post('/logindata', upload.any(), (req, res) => {
                         if(!error) {
                             if(result) {
                                 const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
+
                                 res.send({redirect: true, token: generatedToken})
                             } else {
                                 res.send({message: 'Incorrect data', redirect: false})
@@ -107,17 +108,7 @@ app.post('/auth', (req, res) => {
                         if(doc) {
                             res.send({message: 'Ok', authorized: true})
                         } else {
-                            facebookCollection.findById({_id: decoded.db_user_id}, (fberror, fbdoc) => {
-                                if(!fberror) {
-                                    if(fbdoc) {
-                                        res.send({message: 'Ok', authorized: true})
-                                    } else {
-                                        res.send({message: 'User not found by token', authorized: false})
-                                    }
-                                } else {
-                                    res.send({message: fberror, authorized: false})
-                                }
-                            })
+                            res.send({message: 'User not found by token', authorized: false})
                         }
                     } else {
                         res.send({message: error, authorized: false})
@@ -133,26 +124,58 @@ app.post('/auth', (req, res) => {
 })
 
 
-
 app.post('/facebook', (req, res) => {
     const {name, userID, url} = req.body
 
-    facebookCollection.findOne({userId: userID}, (err, doc) => {
+    usersCollection.findOne({userId: userID}, (err, doc) => {
         if(!err) {
             if(doc) {
                 const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
                 res.send({redirect: true, token: generatedToken})
             } else {
-                const newUser = new facebookCollection({
+                const newUser = new usersCollection({
                     username: name,
                     fbId: userID,
-                    userUrl: url
+                    fbUrl: url
                 })
 
                 const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
 
                 newUser.save((saveError) => {
                     saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
+                })
+            }
+        } else {
+            console.log(err)
+        }
+    })
+})
+///////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+/* ROTAS DE LOADING DE DADOS DO USUÁRIO */
+app.post('/profile-photo', (req, res) => {
+    const token = jwt.decode(req.body.token)
+
+    let {db_user_id} = token
+
+    usersCollection.findById({_id: db_user_id}, (err, doc) => {
+        if(!err) {
+            if(doc.fbId)  {
+                res.send({
+                    src: doc.fbUrl,
+                    username: doc.username
+                })
+            } else {
+                const profilePhotoType = doc.userPhoto.mimetype
+                const profilePhotoBase64 = base64ArrayBuffer.encode(doc.userPhoto.buffer.buffer)
+                res.send({
+                    src: `data:${profilePhotoType};base64, ${profilePhotoBase64}`,
+                    username: doc.username
                 })
             }
         } else {
