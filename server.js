@@ -153,11 +153,11 @@ app.post('/facebook', (req, res) => {
 ///////////////////////////////////////////////////////////////////////
 
 
+//FUNÇÃO QUE TRANSFORMA OS DADOS BRUTOS EM ESQUEMAS JÁ PRONTO PRO FRONTEND
+    
 
 
-
-
-/* ROTA DE LOADING DO PROFILE PHOTO DO USUÁRIO */
+/* ROTA DE LOADING DA PHOTO DO USUÁRIO */
 app.get('/profile-photo/:id', (req, res) => {
     let db_user_id = req.params.id
 
@@ -193,7 +193,6 @@ app.get('/profile/:id', (req, res) => {
         if(!err) {
             res.send({
                 username: doc.username,
-
             })
         } else {
             console.log(err)
@@ -201,37 +200,41 @@ app.get('/profile/:id', (req, res) => {
     })
 })
 
-app.post('/fodase', (req, res) => {
-    console.log(req.body)
-    console.log(req.files)
-})
 ////////////////////////////////////////////////////////////////////
 
 
 app.post('/newpost', (req, res) => {
-    let {newtext, db_user_id} = req.body
+    let {txtarea, db_user_id} = req.body
 
-    const postHeaderPhoto
+    let header
 
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
         if(!err) {
-            if(doc.fbId) {
-                postHeaderPhoto = doc.fbUrl
+            if(doc.fbId)  {
+                header = {
+                    src: doc.fbUrl,
+                    username: doc.username
+                }
             } else {
-                postHeaderPhoto = doc.userPhoto
+                const profilePhotoType = doc.userPhoto.mimetype
+                const profilePhotoBase64 = base64ArrayBuffer.encode(doc.userPhoto.buffer.buffer)
+                header = {
+                    src: `data:${profilePhotoType};base64, ${profilePhotoBase64}`,
+                    username: doc.username
+                }
             }
 
             const newPost = new postCollection({
-                headerphoto: postHeaderPhoto,
-                headerusername: doc.username,
-                bodytext: newtext,
+                headerphoto: header.src,
+                headerusername: header.username,
+                bodytext: txtarea,
                 like: 0,
                 love: 0,
                 comment: []
             })
             
-            newPost.save(() => {
-                res.send({message: 'Posted'})
+            newPost.save((err) => {
+                err ? console.log(err) : res.send({message: 'Posted'})
             })
         } else {
             console.log(err)
