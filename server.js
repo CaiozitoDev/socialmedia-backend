@@ -6,7 +6,9 @@ const session = require('express-session')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
-const base64ArrayBuffer = require('base64-arraybuffer')
+
+// functions
+const formatPhotoData = require('./functions/formatPhotoData')
 
 const app = express()
 
@@ -162,23 +164,7 @@ app.get('/profile-photo/:id', (req, res) => {
     let db_user_id = req.params.id
 
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        if(!err) {
-            if(doc.fbId)  {
-                res.send({
-                    src: doc.fbUrl,
-                    username: doc.username
-                })
-            } else {
-                const profilePhotoType = doc.userPhoto.mimetype
-                const profilePhotoBase64 = base64ArrayBuffer.encode(doc.userPhoto.buffer.buffer)
-                res.send({
-                    src: `data:${profilePhotoType};base64, ${profilePhotoBase64}`,
-                    username: doc.username
-                })
-            }
-        } else {
-            console.log(err)
-        }
+        res.send(formatPhotoData(err, doc))
     })
 })
 /////////////////////////////////////////////////////////////////////////
@@ -206,39 +192,21 @@ app.get('/profile/:id', (req, res) => {
 app.post('/newpost', (req, res) => {
     let {txtarea, db_user_id} = req.body
 
-    let header
-
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        if(!err) {
-            if(doc.fbId)  {
-                header = {
-                    src: doc.fbUrl,
-                    username: doc.username
-                }
-            } else {
-                const profilePhotoType = doc.userPhoto.mimetype
-                const profilePhotoBase64 = base64ArrayBuffer.encode(doc.userPhoto.buffer.buffer)
-                header = {
-                    src: `data:${profilePhotoType};base64, ${profilePhotoBase64}`,
-                    username: doc.username
-                }
-            }
+        let header = formatPhotoData(err, doc)
 
-            const newPost = new postCollection({
-                headerphoto: header.src,
-                headerusername: header.username,
-                bodytext: txtarea,
-                like: 0,
-                love: 0,
-                comment: []
-            })
-            
-            newPost.save((err) => {
-                err ? console.log(err) : res.send({message: 'Posted'})
-            })
-        } else {
-            console.log(err)
-        }
+        const newPost = new postCollection({
+            headerphoto: header.src,
+            headerusername: header.username,
+            bodytext: txtarea,
+            like: 0,
+            love: 0,
+            comment: []
+        })
+        
+        newPost.save((err) => {
+            err ? console.log(err) : res.send({message: 'Posted'})
+        })
     })
 })
 
