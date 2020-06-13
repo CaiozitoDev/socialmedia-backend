@@ -157,11 +157,9 @@ app.post('/facebook', (req, res) => {
 
 
 
-/* ROTAS DE LOADING DE DADOS DO USUÁRIO */
-app.post('/profile-photo', (req, res) => {
-    const token = jwt.decode(req.body.token)
-
-    let {db_user_id} = token
+/* ROTA DE LOADING DO PROFILE PHOTO DO USUÁRIO */
+app.get('/profile-photo/:id', (req, res) => {
+    let db_user_id = req.params.id
 
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
         if(!err) {
@@ -183,15 +181,66 @@ app.post('/profile-photo', (req, res) => {
         }
     })
 })
+/////////////////////////////////////////////////////////////////////////
 
+
+
+/* DADOS DO PROFILE DO USUÁRIO */
+app.get('/profile/:id', (req, res) => {
+    const db_user_id = req.params.id
+
+    usersCollection.findById({_id: db_user_id}, (err, doc) => {
+        if(!err) {
+            res.send({
+                username: doc.username,
+
+            })
+        } else {
+            console.log(err)
+        }
+    })
+})
 
 app.post('/fodase', (req, res) => {
     console.log(req.body)
     console.log(req.files)
 })
+////////////////////////////////////////////////////////////////////
 
 
-app.get('/teste', function(req, res) {
+app.post('/newpost', (req, res) => {
+    let {newtext, db_user_id} = req.body
+
+    const postHeaderPhoto
+
+    usersCollection.findById({_id: db_user_id}, (err, doc) => {
+        if(!err) {
+            if(doc.fbId) {
+                postHeaderPhoto = doc.fbUrl
+            } else {
+                postHeaderPhoto = doc.userPhoto
+            }
+
+            const newPost = new postCollection({
+                headerphoto: postHeaderPhoto,
+                headerusername: doc.username,
+                bodytext: newtext,
+                like: 0,
+                love: 0,
+                comment: []
+            })
+            
+            newPost.save(() => {
+                res.send({message: 'Posted'})
+            })
+        } else {
+            console.log(err)
+        }
+    })
+})
+
+
+app.get('/posts', function(req, res) {
     postCollection.find(function(err, doc) {
         if(!err) {
             res.send(doc)
@@ -204,19 +253,6 @@ app.get('/teste', function(req, res) {
 
 app.post('/postbuttons', (req, res) => {
     console.log(req.body.postfooterbutton)
-})
-
-app.post('/newpost', (req, res) => {
-    let newtext = req.body.txtarea
-
-    const newpost = new postCollection({
-        postbodytext: newtext
-    })
-    
-    newpost.save(() => {
-        console.log('post recebido')
-        res.sendStatus(200)
-    })
 })
 
 

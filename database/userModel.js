@@ -16,10 +16,13 @@ const userSchema = new mongoose.Schema({
         type: String,
     },
     userPhoto: Object,
+    posts: Object,
+    friends: Array,
     timestamp: {
         type: Date,
         default: Date.now
     }
+    
 })
 
 module.exports = mongoose.model('usersCollection', userSchema)
