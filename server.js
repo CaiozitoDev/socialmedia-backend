@@ -101,31 +101,8 @@ app.post('/logindata', upload.any(), (req, res) => {
     }
 })
 
-app.post('/auth', (req, res) => {
-    if(req.body.local_token) {
-        jwt.verify(req.body.local_token, process.env.TOKEN_SECRET, (err, decoded) => {
-            if(!err) {
-                usersCollection.findById({_id: decoded.db_user_id}, (error, doc) => {
-                    if(!error) {
-                        if(doc) {
-                            res.send({message: 'Ok', authorized: true})
-                        } else {
-                            res.send({message: 'User not found by token', authorized: false})
-                        }
-                    } else {
-                        res.send({message: error, authorized: false})
-                    }
-                })
-            } else {
-                res.send({message: 'There is a error with token', authorized: false})
-            }
-        })
-    } else {
-        res.send({message: 'Token not found', authorized: false})
-    }
-})
 
-
+/* LOGIN/REGISTER COM A API DO FACEBOOK */
 app.post('/facebook', (req, res) => {
     const {name, userID, url} = req.body
 
@@ -152,11 +129,34 @@ app.post('/facebook', (req, res) => {
         }
     })
 })
-///////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
 
 
-//FUNÇÃO QUE TRANSFORMA OS DADOS BRUTOS EM ESQUEMAS JÁ PRONTO PRO FRONTEND
-    
+/* ROTA DE AUTENTICAÇÃO DO USUÁRIO PRA NAVEGAÇÃO NO SITE */
+app.post('/auth', (req, res) => {
+    if(req.body.local_token) {
+        jwt.verify(req.body.local_token, process.env.TOKEN_SECRET, (err, decoded) => {
+            if(!err) {
+                usersCollection.findById({_id: decoded.db_user_id}, (error, doc) => {
+                    if(!error) {
+                        if(doc) {
+                            res.send({message: 'Ok', authorized: true})
+                        } else {
+                            res.send({message: 'User not found by token', authorized: false})
+                        }
+                    } else {
+                        res.send({message: error, authorized: false})
+                    }
+                })
+            } else {
+                res.send({message: 'There is a error with token', authorized: false})
+            }
+        })
+    } else {
+        res.send({message: 'Token not found', authorized: false})
+    }
+})
+///////////////////////////////////////////////////////////////////////W
 
 
 /* ROTA DE LOADING DA PHOTO DO USUÁRIO */
@@ -167,28 +167,21 @@ app.get('/profile-photo/:id', (req, res) => {
         res.send(formatPhotoData(err, doc))
     })
 })
-/////////////////////////////////////////////////////////////////////////
 
 
+/* DADOS DO PROFILE DO USUÁRIO SELECIONADO */
+app.get('/profile/:username', (req, res) => {
+    const username = req.params.username
 
-/* DADOS DO PROFILE DO USUÁRIO */
-app.get('/profile/:id', (req, res) => {
-    const db_user_id = req.params.id
-
-    usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        if(!err) {
-            res.send({
-                username: doc.username,
-            })
-        } else {
-            console.log(err)
-        }
+    usersCollection.findOne({username: username}, (err, doc) => {
+        res.send(formatPhotoData(err, doc))
     })
 })
 
 ////////////////////////////////////////////////////////////////////
 
 
+/* ADICIONAR NOVO POST NO BANCO DE DADOS */
 app.post('/newpost', (req, res) => {
     let {txtarea, db_user_id} = req.body
 
@@ -211,6 +204,7 @@ app.post('/newpost', (req, res) => {
 })
 
 
+/* ENVIAR OS POSTS */
 app.get('/posts', function(req, res) {
     postCollection.find(function(err, doc) {
         if(!err) {
@@ -222,8 +216,18 @@ app.get('/posts', function(req, res) {
     
 })
 
-app.post('/postbuttons', (req, res) => {
-    console.log(req.body.postfooterbutton)
+
+/* ATUALIZAR VALORES DE LIKE, LOVE, E COMMENTS */
+app.patch('/post-buttons', (req, res) => {
+    const {username} = req.body
+
+    postCollection.findOneAndUpdate({headerusername: username}, {}, (err, doc) => {
+        if(!err) {
+
+        } else {
+            console.log(err)
+        }
+    })
 })
 
 
