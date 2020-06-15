@@ -1,6 +1,9 @@
 const mongoose = require('mongoose')
 
 const postSchema = new mongoose.Schema({
+    userid: {
+        type: String
+    },
     headerphoto: {
         required: true,
         type: String
@@ -21,6 +24,10 @@ const postSchema = new mongoose.Schema({
     },
     comment: {
         type: Array
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
     }
 })
 

@@ -15,9 +15,18 @@ const userSchema = new mongoose.Schema({
     fbUrl: {
         type: String,
     },
-    userPhoto: Object,
-    posts: Object,
-    friends: Array,
+    userPhoto: {
+        type: Object,
+    },
+    posts: {
+        type: Array,
+    },
+    reactedposts: {
+        type: Array,
+    },
+    friends: {
+        Array,
+    },
     timestamp: {
         type: Date,
         default: Date.now

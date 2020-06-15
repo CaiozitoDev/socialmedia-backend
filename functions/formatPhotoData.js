@@ -6,7 +6,8 @@ module.exports = function formatPhotoData(err, doc) {
             if(doc.fbId) {
                 return {
                     src: doc.fbUrl,
-                    username: doc.username
+                    username: doc.username,
+                    userid: doc._id
                 }
             } else {
                 const profilePhotoType = doc.userPhoto.mimetype
@@ -14,13 +15,14 @@ module.exports = function formatPhotoData(err, doc) {
                 
                 return {
                     src: `data:${profilePhotoType};base64, ${profilePhotoBase64}`,
-                    username: doc.username
+                    username: doc.username,
+                    userid: doc._id
                 }
             }
         } else {
             return {
                 src: 'https://www.shareicon.net/data/512x512/2015/12/18/689279_block_512x512.png',
-                username: 'User not found'
+                username: 'User not found',
             }
         }
     } else {

@@ -106,7 +106,7 @@ app.post('/logindata', upload.any(), (req, res) => {
 app.post('/facebook', (req, res) => {
     const {name, userID, url} = req.body
 
-    usersCollection.findOne({userId: userID}, (err, doc) => {
+    usersCollection.findOne({fbId: userID}, (err, doc) => {
         if(!err) {
             if(doc) {
                 const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
@@ -189,6 +189,7 @@ app.post('/newpost', (req, res) => {
         let header = formatPhotoData(err, doc)
 
         const newPost = new postCollection({
+            userid: header.userid,
             headerphoto: header.src,
             headerusername: header.username,
             bodytext: txtarea,
@@ -217,13 +218,41 @@ app.get('/posts', function(req, res) {
 })
 
 
+app.post('/post-buttons', (req, res) => {
+    const postid = req.body.postid
+
+    postCollection.findById({_id: postid}, (err, doc) => {
+        if(!err) {
+            if(doc) {
+                res.send({
+                    like: doc.like,
+                    love: doc.love,
+                    comment: doc.comment.length
+                })
+            } else {
+                res.send('Post not found')
+            }
+        } else {
+            console.log(err)
+        }
+    })
+})
+
+
 /* ATUALIZAR VALORES DE LIKE, LOVE, E COMMENTS */
 app.patch('/post-buttons', (req, res) => {
-    const {username} = req.body
+    const {buttonValue, postid, isButtonClicked} = req.body
 
-    postCollection.findOneAndUpdate({headerusername: username}, {}, (err, doc) => {
+    postCollection.findByIdAndUpdate({_id: postid}, {$inc: {[buttonValue]: !isButtonClicked ? 1 : -1}}, (err, doc) => {
         if(!err) {
-
+            usersCollection.findOneAndUpdate({_id: doc.userid},
+                !isButtonClicked ? {$push: {reactedposts: {[buttonValue]: postid}}} : {$pull: {reactedposts: {[buttonValue]: postid}}}, (usererror) => {
+                    if(!usererror) {
+                        res.send(`${buttonValue} value updated.`)
+                    } else {
+                        console.log(usererror)
+                    }
+                })
         } else {
             console.log(err)
         }
