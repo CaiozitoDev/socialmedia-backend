@@ -47,7 +47,7 @@ app.post('/registerdata', upload.single('fileimage'), (req, res) => {
                             const newUser = new usersCollection({
                                 username: username,
                                 password: hash,
-                                userPhoto: profilePhoto
+                                userPhoto: profilePhoto,
                             })
 
                             const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
@@ -241,22 +241,48 @@ app.post('/post-buttons', (req, res) => {
 
 /* ATUALIZAR VALORES DE LIKE, LOVE, E COMMENTS */
 app.patch('/post-buttons', (req, res) => {
-    const {buttonValue, postid, isButtonClicked} = req.body
+    const {buttonValue, postid, isButtonClicked, db_user_id} = req.body
+    console.log(req.body)
 
-    postCollection.findByIdAndUpdate({_id: postid}, {$inc: {[buttonValue]: !isButtonClicked ? 1 : -1}}, (err, doc) => {
-        if(!err) {
-            usersCollection.findOneAndUpdate({_id: doc.userid},
-                !isButtonClicked ? {$push: {reactedposts: {[buttonValue]: postid}}} : {$pull: {reactedposts: {[buttonValue]: postid}}}, (usererror) => {
-                    if(!usererror) {
-                        res.send(`${buttonValue} value updated.`)
-                    } else {
-                        console.log(usererror)
+    console.log(buttonValue, isButtonClicked)
+    if(buttonValue == 'like') { 
+        usersCollection.findOneAndUpdate({_id: db_user_id, 'reactedposts.postid': postid}, {$set: {'reactedposts.$.like': !isButtonClicked}}, (err, doc) => {
+            if(!err) {
+                if(doc) {
+
+                } else {
+                    console.log('chegou no push')
+                    let teste = {
+                        like: false,
+                        love: false
                     }
-                })
+                    usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {reactedposts: {postid, ...teste, [buttonValue]: true}}}, (err) => {err && console.log(err)})
+                }
+            } else {
+                console.log(err)
+            }
+        })
+    } else {
+    usersCollection.findOneAndUpdate({_id: db_user_id, 'reactedposts.postid': postid}, {$set: {'reactedposts.$.love': !isButtonClicked}}, (err, doc) => {
+        if(!err) {
+            if(doc) {
+
+            } else {
+                console.log('chegou no push')
+                let teste = {
+                    like: false,
+                    love: false
+                }
+                usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {reactedposts: {postid, ...teste, [buttonValue]: true}}}, (err) => {err && console.log(err)})
+            }
         } else {
             console.log(err)
         }
     })
+    }
+    postCollection.findByIdAndUpdate({_id: postid},
+        {$inc: {[buttonValue]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
+    res.send('vrau nelas') 
 })
 
 
