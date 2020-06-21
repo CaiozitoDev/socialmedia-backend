@@ -277,7 +277,8 @@ app.patch('/post-buttons', (req, res) => {
 
 
 
-app.post('/post', (req, res) => {
+/* PEGAR POST ÚNICO */
+app.post('/getpost', (req, res) => {
     const postid = req.body.postid
 
     postCollection.findById({_id: postid}, (err, doc) => {
@@ -288,6 +289,29 @@ app.post('/post', (req, res) => {
         }
     })
 })
+
+
+
+app.post('/addcomment', (req, res) => {
+    const {postid, txtValue, db_user_id} = req.body
+
+    usersCollection.findById({_id: db_user_id}, (err, doc) => {
+        if(!err) {
+            postCollection.findByIdAndUpdate({_id: postid}, {$push: {comment: {
+                userid: db_user_id,
+                username: doc.username,
+                userPhoto: doc.fbUrl ? doc.fbUrl : formatPhotoData(err, doc).src,
+                bodytext: txtValue
+            }}}, (err) => {
+                err ? console.log(err) : res.send('Comment added')
+            })
+        } else {
+            console.log(err)
+        }
+    })
+})
+
+
 
 
 app.listen(process.env.PORT || 5000, () => {
