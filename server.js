@@ -50,7 +50,7 @@ app.post('/registerdata', upload.single('fileimage'), (req, res) => {
                                 userPhoto: profilePhoto,
                             })
 
-                            const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '20m'})
+                            const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                             newUser.save((saveError) => {
                                 saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
@@ -79,7 +79,7 @@ app.post('/logindata', upload.any(), (req, res) => {
                     bcrypt.compare(password, doc.password, (error, result) => {
                         if(!error) {
                             if(result) {
-                                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '20m'})
+                                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                                 res.send({redirect: true, token: generatedToken})
                             } else {
@@ -109,7 +109,7 @@ app.post('/facebook', (req, res) => {
     usersCollection.findOne({fbId: userID}, (err, doc) => {
         if(!err) {
             if(doc) {
-                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
+                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
                 res.send({redirect: true, token: generatedToken})
             } else {
                 const newUser = new usersCollection({
@@ -118,7 +118,7 @@ app.post('/facebook', (req, res) => {
                     fbUrl: url
                 })
 
-                const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '5m'})
+                const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                 newUser.save((saveError) => {
                     saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
@@ -209,12 +209,22 @@ app.post('/newpost', (req, res) => {
 app.get('/posts', function(req, res) {
     postCollection.find(function(err, doc) {
         if(!err) {
-            res.send(doc)
+            let lightVersion = []
+
+            doc.map(post => {
+                lightVersion.push({
+                    headerusername: post.headerusername,
+                    headerphoto: post.headerphoto,
+                    bodytext: post.bodytext,
+                    _id: post._id,
+                })
+            })
+
+            res.send(lightVersion)
         } else {
             console.log(err)
         }
     })
-    
 })
 
 
@@ -290,8 +300,6 @@ app.post('/getpost', (req, res) => {
     })
 })
 
-
-
 app.post('/addcomment', (req, res) => {
     const {postid, txtValue, db_user_id} = req.body
 
@@ -302,7 +310,7 @@ app.post('/addcomment', (req, res) => {
                 username: doc.username,
                 userPhoto: doc.fbUrl ? doc.fbUrl : formatPhotoData(err, doc).src,
                 bodytext: txtValue
-            }}}, (err) => {
+            }}}, (err, doc) => {
                 err ? console.log(err) : res.send('Comment added')
             })
         } else {
@@ -310,6 +318,26 @@ app.post('/addcomment', (req, res) => {
         }
     })
 })
+/////////////////////////////////////////////////////////////////////////
+
+
+/* ROTAS DO MOST LOVED POSTS*/
+app.get('/topposts', (req, res) => {
+    postCollection.find().sort({love: -1}).limit(10).then(data => {
+        let lightVersion = []
+        data.map(post => {
+            lightVersion.push({
+                headerusername: post.headerusername,
+                headerphoto: post.headerphoto,
+                bodytext: post.bodytext,
+                postid: post._id
+            })
+        })
+        
+        res.send(lightVersion)
+    })
+})
+
 
 
 
