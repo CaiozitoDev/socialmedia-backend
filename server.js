@@ -396,13 +396,16 @@ app.post('/getfriendrequest', (req, res) => {
 
 app.post('/friendrequestresult', (req, res) => {
     const {result, db_user_id, userid} = req.body
-    console.log(req.body)
 
-    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendrequest': {userid: userid}}})
+    usersCollection.updateOne({username: 'vrau'}, {$pull: {'friends.friendrequest': {username: 'vapo'}}}, (err) => {
+        err && console.log(err)
+    })
 
     if(result) {
-        // dar um jeito de pegar os dados do usuário a ser adicionado na lista e atualizar na db
-        usersCollection.updateOne({_id: db_user_id}, {$push: {'friends.friendlist': '?'}})
+        const {username, photo} = req.body
+        usersCollection.updateOne({_id: db_user_id}, {$push: {'friends.friendlist': {userid, username, photo}}}, (err) => {
+            err && console.log(err)
+        })
         res.send('Friend request accepted.')
     } else {
         res.send('Friend request denied.')
