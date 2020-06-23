@@ -217,6 +217,7 @@ app.get('/posts', function(req, res) {
                     headerphoto: post.headerphoto,
                     bodytext: post.bodytext,
                     _id: post._id,
+                    userid: post.userid
                 })
             })
 
@@ -337,6 +338,77 @@ app.get('/topposts', (req, res) => {
         res.send(lightVersion)
     })
 })
+//////////////////////////////////////////////////////////////////////////
+
+/* ROTAS DE FRIENDS */
+
+/* VERIFICA SE JÁ SÃO AMIGOS */
+app.post('/arefriends', (req, res) => {
+    const {postuserid, db_user_id} = req.body
+
+    /* usersCollection.findOne({_id: db_user_id}, {friendlist: {$elemMatch: postuserid}}, (err, doc) => {
+        console.log(doc)
+        if(!err) {
+            if(doc.user) {
+                res.send(true)
+            } else {
+                res.send(false)
+            }
+        } else {
+            console.log(err)
+        }
+    }) */
+    res.send(false)
+})
+
+/* ATUALIZAR LISTA DE CONVITES DE AMIZADE QUANDO ENVIAM SOLICITAÇÃO */
+app.patch('/friendrequest', (req, res) => {
+    const {db_user_id, postuserid} = req.body
+
+    usersCollection.findById({_id: db_user_id}, {friends: 0}, (err1, doc1) => {
+        if(!err1) {
+            const request = {
+                userid: db_user_id,
+                username: doc1.username,
+                photo: doc1.fbUrl ? doc1.fbUrl : formatPhotoData(err1, doc1).src,
+                accepted: false
+            }
+
+            usersCollection.findByIdAndUpdate({_id: postuserid}, {$push: {'friends.friendrequest': request}}, (err) => {
+                err ? console.log(err) : res.send('Friend request sent')
+            })
+        } else {
+            console.log(err1)
+        }
+    })
+})
+
+
+/* REPASSA A LISTA DE FRIEND REQUESTS */
+app.post('/getfriendrequest', (req, res) => {
+    const db_user_id = req.body.db_user_id
+
+    usersCollection.findById({_id: db_user_id}, 'friends.friendrequest', (err, doc) => {
+        err ? console.log(err) : res.send(doc.friends.friendrequest)
+    })
+})
+
+
+app.post('/friendrequestresult', (req, res) => {
+    const {result, db_user_id, userid} = req.body
+    console.log(req.body)
+
+    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendrequest': {userid: userid}}})
+
+    if(result) {
+        // dar um jeito de pegar os dados do usuário a ser adicionado na lista e atualizar na db
+        usersCollection.updateOne({_id: db_user_id}, {$push: {'friends.friendlist': '?'}})
+        res.send('Friend request accepted.')
+    } else {
+        res.send('Friend request denied.')
+    }
+})
+
 
 
 

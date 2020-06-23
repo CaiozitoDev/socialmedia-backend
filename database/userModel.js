@@ -20,7 +20,10 @@ const userSchema = new mongoose.Schema({
     },
     posts: Array,
     reactedposts: Array,
-    friends: Array,
+    friends: {
+        friendrequest: Array,
+        friendlist: Array
+    },
     timestamp: {
         type: Date,
         default: Date.now
