@@ -22,7 +22,8 @@ const userSchema = new mongoose.Schema({
     reactedposts: Array,
     friends: {
         friendrequest: Array,
-        friendlist: Array
+        friendlist: Array,
+        sentrequest: Array
     },
     timestamp: {
         type: Date,

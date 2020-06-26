@@ -47,7 +47,7 @@ app.post('/registerdata', upload.single('fileimage'), (req, res) => {
                             const newUser = new usersCollection({
                                 username: username,
                                 password: hash,
-                                userPhoto: profilePhoto,
+                                userPhoto: formatPhotoData(profilePhoto),
                             })
 
                             const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
@@ -115,7 +115,7 @@ app.post('/facebook', (req, res) => {
                 const newUser = new usersCollection({
                     username: name,
                     fbId: userID,
-                    fbUrl: url
+                    userPhoto: url
                 })
 
                 const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
@@ -129,7 +129,7 @@ app.post('/facebook', (req, res) => {
         }
     })
 })
-////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /* ROTA DE AUTENTICAÇÃO DO USUÁRIO PRA NAVEGAÇÃO NO SITE */
@@ -156,7 +156,7 @@ app.post('/auth', (req, res) => {
         res.send({message: 'Token not found', authorized: false})
     }
 })
-///////////////////////////////////////////////////////////////////////W
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /* ROTA DE LOADING DA PHOTO DO USUÁRIO */
@@ -164,7 +164,7 @@ app.get('/profile-photo/:id', (req, res) => {
     let db_user_id = req.params.id
 
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        res.send(formatPhotoData(err, doc))
+        res.send({src: doc.userPhoto, username: doc.username})
     })
 })
 
@@ -173,12 +173,13 @@ app.get('/profile-photo/:id', (req, res) => {
 app.get('/profile/:username', (req, res) => {
     const username = req.params.username
 
+    username !== 'favicon.ico' &&
     usersCollection.findOne({username: username}, (err, doc) => {
-        res.send(formatPhotoData(err, doc))
+        res.send({src: doc.userPhoto, username: doc.username})
     })
 })
 
-////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /* ADICIONAR NOVO POST NO BANCO DE DADOS */
@@ -186,12 +187,10 @@ app.post('/newpost', (req, res) => {
     let {txtarea, db_user_id} = req.body
 
     usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        let header = formatPhotoData(err, doc)
-
         const newPost = new postCollection({
-            userid: header.userid,
-            headerphoto: header.src,
-            headerusername: header.username,
+            userid: doc._id,
+            headerphoto: doc.userPhoto,
+            headerusername: doc.username,
             bodytext: txtarea,
             like: 0,
             love: 0,
@@ -309,7 +308,7 @@ app.post('/addcomment', (req, res) => {
             postCollection.findByIdAndUpdate({_id: postid}, {$push: {comment: {
                 userid: db_user_id,
                 username: doc.username,
-                userPhoto: doc.fbUrl ? doc.fbUrl : formatPhotoData(err, doc).src,
+                userPhoto: doc.userPhoto,
                 bodytext: txtValue
             }}}, (err, doc) => {
                 err ? console.log(err) : res.send('Comment added')
@@ -319,7 +318,7 @@ app.post('/addcomment', (req, res) => {
         }
     })
 })
-/////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /* ROTAS DO MOST LOVED POSTS*/
@@ -338,50 +337,67 @@ app.get('/topposts', (req, res) => {
         res.send(lightVersion)
     })
 })
-//////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* ROTAS DE FRIENDS */
+
+/* REPASSA LISTA DE AMIGOS NA FRIENDS PAGE */
+app.post('/friendlist', (req, res) => {
+    const db_user_id = req.body.db_user_id
+
+    usersCollection.findById({_id: db_user_id}, (err, doc) => {
+        if(!err) {
+            res.send(doc.friends.friendlist)
+        } else {
+            console.log(err)
+        }
+    })
+})
 
 /* VERIFICA SE JÁ SÃO AMIGOS */
 app.post('/arefriends', (req, res) => {
     const {postuserid, db_user_id} = req.body
 
-    /* usersCollection.findOne({_id: db_user_id}, {friendlist: {$elemMatch: postuserid}}, (err, doc) => {
-        console.log(doc)
+    usersCollection.findOne({_id: db_user_id}, {'friends.friendlist.userid': postuserid, 'friends.sentrequest': postuserid}, (err, doc) => {
         if(!err) {
-            if(doc.user) {
-                res.send(true)
-            } else {
-                res.send(false)
+            try {
+                if(doc.friends.friendlist[0].userid == postuserid) {
+                    res.send(true)
+                }
+            } catch {
+                if(doc.friends.sentrequest[0] == postuserid) {
+                    res.send('sent')
+                } else {
+                    res.send(false)
+                }
             }
         } else {
             console.log(err)
         }
-    }) */
-    res.send(false)
+    })
+    
 })
 
 /* ATUALIZAR LISTA DE CONVITES DE AMIZADE QUANDO ENVIAM SOLICITAÇÃO */
 app.patch('/friendrequest', (req, res) => {
     const {db_user_id, postuserid} = req.body
 
-    usersCollection.findById({_id: db_user_id}, {friends: 0}, (err1, doc1) => {
+    usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {'friends.sentrequest': postuserid}}, (err1, doc1) => {
         if(!err1) {
             const request = {
                 userid: db_user_id,
                 username: doc1.username,
-                photo: doc1.fbUrl ? doc1.fbUrl : formatPhotoData(err1, doc1).src,
-                accepted: false
+                photo: doc1.userPhoto
             }
 
-            usersCollection.findByIdAndUpdate({_id: postuserid}, {$push: {'friends.friendrequest': request}}, (err) => {
+            usersCollection.updateOne({_id: postuserid}, {$push: {'friends.friendrequest': request}}, (err) => {
                 err ? console.log(err) : res.send('Friend request sent')
             })
         } else {
             console.log(err1)
         }
     })
-})
+}) 
 
 
 /* REPASSA A LISTA DE FRIEND REQUESTS */
@@ -397,20 +413,33 @@ app.post('/getfriendrequest', (req, res) => {
 app.post('/friendrequestresult', (req, res) => {
     const {result, db_user_id, userid} = req.body
 
-    usersCollection.updateOne({username: 'vrau'}, {$pull: {'friends.friendrequest': {username: 'vapo'}}}, (err) => {
-        err && console.log(err)
+    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendrequest': {userid: userid}}}, (err0) => {
+        if(!err0) {
+            if(result) {
+                const {username, photo} = req.body
+                usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {'friends.friendlist': {userid, username, photo}}}, (err, doc) => {
+                    if(!err) {
+                        usersCollection.findByIdAndUpdate({_id: userid}, {$push: {'friends.friendlist': {
+                            userid: db_user_id,
+                            username: doc.username,
+                            photo: doc.userPhoto
+                        }},
+                        $pull: {'friends.sentrequest': db_user_id}}, (err2) => {
+                            err ? console.log(err2) : res.send('Friend request accepted.')
+                        })
+                    } else {
+                        console.log(err)
+                    }
+                })
+            } else {
+                res.send('Friend request denied.')
+            }
+        } else {
+            console.log(err0)
+        }
     })
-
-    if(result) {
-        const {username, photo} = req.body
-        usersCollection.updateOne({_id: db_user_id}, {$push: {'friends.friendlist': {userid, username, photo}}}, (err) => {
-            err && console.log(err)
-        })
-        res.send('Friend request accepted.')
-    } else {
-        res.send('Friend request denied.')
-    }
 })
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
