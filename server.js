@@ -12,6 +12,8 @@ const formatPhotoData = require('./functions/formatPhotoData')
 
 const app = express()
 
+app.use(express.static(__dirname + '/build'))
+
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}))
 app.use(session({
@@ -274,48 +276,40 @@ app.patch('/post-buttons', (req, res) => {
                     like: false,
                     love: false,
                 }
-                usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {reactedposts: {postid, ...teste, [iconName]: true}}}, (err) => {err && console.log(err)})
+                usersCollection.updateOne({_id: db_user_id}, {$push: {reactedposts: {postid, ...teste, [iconName]: true}}}, (err) => {err && console.log(err)})
             }
         } else {
             console.log(err)
         }
     })
 
-    postCollection.findByIdAndUpdate({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
+    postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
     res.send('Reaction sent') 
 })
-
+/////////////////////////////////////////////////////////////////////////////
 
 
 /* PEGAR POST ÚNICO */
-app.post('/getpost', (req, res) => {
-    const postid = req.body.postid
+app.get('/getpost/:postid', (req, res) => {
+    const postid = req.params.postid
 
-    postCollection.findById({_id: postid}, (err, doc) => {
-        if(!err) {
-            res.send(doc)
-        } else {
-            console.log(err)
-        }
+    postCollection.findById({_id: postid}).then(doc => {
+        res.send(doc)
     })
 })
 
-app.post('/addcomment', (req, res) => {
+app.patch('/addcomment', (req, res) => {
     const {postid, txtValue, db_user_id} = req.body
 
-    usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        if(!err) {
-            postCollection.findByIdAndUpdate({_id: postid}, {$push: {comment: {
-                userid: db_user_id,
-                username: doc.username,
-                userPhoto: doc.userPhoto,
-                bodytext: txtValue
-            }}}, (err, doc) => {
-                err ? console.log(err) : res.send('Comment added')
-            })
-        } else {
-            console.log(err)
-        }
+    usersCollection.findById({_id: db_user_id}).select({username: 1, userPhoto: 1}).then((doc) => {
+        postCollection.updateOne({_id: postid}, {$push: {comment: {
+            userid: db_user_id,
+            username: doc.username,
+            userPhoto: doc.userPhoto,
+            bodytext: txtValue
+        }}}, (err1) => {
+            err1 ? console.log(err1) : res.send('Comment added')
+        })
     })
 })
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -326,12 +320,14 @@ app.get('/topposts', (req, res) => {
     postCollection.find().sort({love: -1}).limit(10).then(data => {
         let lightVersion = []
         data.map(post => {
-            lightVersion.push({
-                headerusername: post.headerusername,
-                headerphoto: post.headerphoto,
-                bodytext: post.bodytext,
-                postid: post._id
-            })
+            if(post.love >= 1) {
+                lightVersion.push({
+                    headerusername: post.headerusername,
+                    headerphoto: post.headerphoto,
+                    bodytext: post.bodytext,
+                    postid: post._id
+                })
+            }
         })
         
         res.send(lightVersion)
@@ -342,15 +338,11 @@ app.get('/topposts', (req, res) => {
 /* ROTAS DE FRIENDS */
 
 /* REPASSA LISTA DE AMIGOS NA FRIENDS PAGE */
-app.post('/friendlist', (req, res) => {
-    const db_user_id = req.body.db_user_id
+app.get('/friendlist/:username', (req, res) => {
+    const username = req.params.username
 
-    usersCollection.findById({_id: db_user_id}, (err, doc) => {
-        if(!err) {
-            res.send(doc.friends.friendlist)
-        } else {
-            console.log(err)
-        }
+    usersCollection.findOne({username: username}).select({friends: 1}).then(doc => {
+        res.send(doc.friends.friendlist)
     })
 })
 
