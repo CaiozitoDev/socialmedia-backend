@@ -12,6 +12,9 @@ const formatPhotoData = require('./functions/formatPhotoData')
 
 const app = express()
 
+/* const server = require('http').createServer(app)
+const io = require('socket.io')(server) */
+
 app.use(express.static(__dirname + '/build'))
 
 app.use(bodyParser.json())
@@ -247,8 +250,7 @@ app.post('/post-buttons', (req, res) => {
                                 love: doc.love,
                                 comment: doc.comment.length,
                                 isLikeClicked: reactionSaved ? reactionSaved.like : false,
-                                isLoveClicked: reactionSaved ? reactionSaved.love : false,
-                                isCommentClicked: false // adicionar função depois
+                                isLoveClicked: reactionSaved ? reactionSaved.love : false
                             })
                         } else {
                             res.send('Post not found')
@@ -263,14 +265,15 @@ app.post('/post-buttons', (req, res) => {
     })
 })
 
-
 /* ATUALIZAR VALORES DE LIKE, LOVE, E COMMENTS */
 app.patch('/post-buttons', (req, res) => {
     const {iconName, postid, isButtonClicked, db_user_id} = req.body
-    console.log(req.body)
+
+    postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
      
     usersCollection.findOneAndUpdate({_id: db_user_id, 'reactedposts.postid': postid}, {$set: {[`reactedposts.$.${iconName}`]: isButtonClicked}}, (err, doc) => {
         if(!err) {
+            console.log(doc)
             if(!doc) {
                 let teste = {
                     like: false,
@@ -281,10 +284,9 @@ app.patch('/post-buttons', (req, res) => {
         } else {
             console.log(err)
         }
-    })
 
-    postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
-    res.send('Reaction sent') 
+        res.send('Reaction sent') 
+    })
 })
 /////////////////////////////////////////////////////////////////////////////
 
@@ -313,7 +315,6 @@ app.patch('/addcomment', (req, res) => {
     })
 })
 //////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 /* ROTAS DO MOST LOVED POSTS*/
 app.get('/topposts', (req, res) => {
@@ -350,14 +351,13 @@ app.get('/friendlist/:username', (req, res) => {
 app.post('/arefriends', (req, res) => {
     const {postuserid, db_user_id} = req.body
 
-    usersCollection.findOne({_id: db_user_id}, {'friends.friendlist.userid': postuserid, 'friends.sentrequest': postuserid}, (err, doc) => {
+    usersCollection.findById({_id: db_user_id}, {'friends.friendlist.userid': postuserid, 'friends.sentrequest': postuserid}, (err, doc) => {
         if(!err) {
-            try {
-                if(doc.friends.friendlist[0].userid == postuserid) {
-                    res.send(true)
-                }
-            } catch {
-                if(doc.friends.sentrequest[0] == postuserid) {
+            if(doc.friends.friendlist[0]) {
+                res.send(true)
+            } else {
+                console.log(2)
+                if(doc.friends.sentrequest.indexOf(postuserid) !== -1) {
                     res.send('sent')
                 } else {
                     res.send(false)
@@ -367,7 +367,6 @@ app.post('/arefriends', (req, res) => {
             console.log(err)
         }
     })
-    
 })
 
 /* ATUALIZAR LISTA DE CONVITES DE AMIZADE QUANDO ENVIAM SOLICITAÇÃO */
@@ -401,7 +400,7 @@ app.post('/getfriendrequest', (req, res) => {
     })
 })
 
-
+/* PROCESSA OS DADOS DE ACCEPT OU REJEIT DO PEDIDO DE AMIZADE */
 app.post('/friendrequestresult', (req, res) => {
     const {result, db_user_id, userid} = req.body
 
@@ -435,7 +434,7 @@ app.post('/friendrequestresult', (req, res) => {
 
 
 
-
+ 
 
 
 app.listen(process.env.PORT || 5000, () => {
