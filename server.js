@@ -6,17 +6,16 @@ const session = require('express-session')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
+const cors = require('cors')
 
 // functions
 const formatPhotoData = require('./functions/formatPhotoData')
 
 const app = express()
 
-/* const server = require('http').createServer(app)
-const io = require('socket.io')(server) */
-
 app.use(express.static(__dirname + '/build'))
 
+app.use(cors())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}))
 app.use(session({
