@@ -29,7 +29,7 @@ let upload = multer()
 const postCollection = require('./database/postModel')
 const usersCollection = require('./database/userModel')
 
-mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifiedTopology: true})
+mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false})
     .then(() => {console.log('MongoDB Connected')})
     .catch((err) => {console.log(err)})
 
@@ -234,6 +234,7 @@ app.get('/posts', function(req, res) {
 
 /* RETORNA O NÚMERO DE LIKES DE CADA POST E OS LIKES JÁ DADOS PELO USUÁRIO */
 app.post('/post-buttons', (req, res) => {
+    console.log('chegou emmmm')
     const {postid, db_user_id} = req.body
 
     // FAZER COM QUE RETORNE O ARRAY ESPECIFICO DO REACTEDPOSTS
@@ -266,13 +267,13 @@ app.post('/post-buttons', (req, res) => {
 
 /* ATUALIZAR VALORES DE LIKE, LOVE, E COMMENTS */
 app.patch('/post-buttons', (req, res) => {
+    console.log('foi porra')
     const {iconName, postid, isButtonClicked, db_user_id} = req.body
 
     postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
      
     usersCollection.findOneAndUpdate({_id: db_user_id, 'reactedposts.postid': postid}, {$set: {[`reactedposts.$.${iconName}`]: isButtonClicked}}, (err, doc) => {
         if(!err) {
-            console.log(doc)
             if(!doc) {
                 let teste = {
                     like: false,
@@ -284,6 +285,7 @@ app.patch('/post-buttons', (req, res) => {
             console.log(err)
         }
 
+        console.log('saiu porra')
         res.send('Reaction sent') 
     })
 })
