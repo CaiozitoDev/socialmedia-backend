@@ -234,7 +234,6 @@ app.get('/posts', function(req, res) {
 
 /* RETORNA O NÚMERO DE LIKES DE CADA POST E OS LIKES JÁ DADOS PELO USUÁRIO */
 app.post('/post-buttons', (req, res) => {
-    console.log('chegou emmmm')
     const {postid, db_user_id} = req.body
 
     // FAZER COM QUE RETORNE O ARRAY ESPECIFICO DO REACTEDPOSTS
@@ -429,6 +428,14 @@ app.post('/friendrequestresult', (req, res) => {
         } else {
             console.log(err0)
         }
+    })
+})
+
+app.delete('/deletefriend', (req, res) => {
+    const {db_user_id, userid} = req.query
+
+    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendlist': {userid: userid}}}, err => {
+        err ? console.log(err) : res.send('friend deleted')
     })
 })
 ///////////////////////////////////////////////////////////////////////////////////////////////////
