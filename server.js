@@ -210,24 +210,21 @@ app.post('/newpost', (req, res) => {
 
 /* ENVIAR OS POSTS */
 app.get('/posts', function(req, res) {
-    postCollection.find(function(err, doc) {
-        if(!err) {
-            let lightVersion = []
+    const numberOfPosts = Number(req.query.numberOfPosts)
+    console.log(numberOfPosts)
 
-            doc.map(post => {
-                lightVersion.push({
-                    headerusername: post.headerusername,
-                    headerphoto: post.headerphoto,
-                    bodytext: post.bodytext,
-                    _id: post._id,
-                    userid: post.userid
-                })
+    postCollection.find().limit(numberOfPosts).then(doc => {
+        let lightVersion = []
+        doc.map(post => {
+            lightVersion.push({
+                headerusername: post.headerusername,
+                headerphoto: post.headerphoto,
+                bodytext: post.bodytext,
+                _id: post._id,
+                userid: post.userid
             })
-
-            res.send(lightVersion)
-        } else {
-            console.log(err)
-        }
+        })
+        res.send(lightVersion)
     })
 })
 
