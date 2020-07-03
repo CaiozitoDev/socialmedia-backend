@@ -224,7 +224,7 @@ app.get('/posts', function(req, res) {
                 userid: post.userid
             })
         })
-        res.send(lightVersion)
+        res.send({lightVersion, numberOfPosts})
     })
 })
 
