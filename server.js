@@ -179,7 +179,11 @@ app.get('/profile/:username', (req, res) => {
 
     username !== 'favicon.ico' &&
     usersCollection.findOne({username: username}, (err, doc) => {
-        res.send({src: doc.userPhoto, username: doc.username})
+        if(doc) {
+            res.send({src: doc.userPhoto, username: doc.username})
+        } else {
+            res.send({src: 'https://image.flaticon.com/icons/png/512/718/718672.png', username: 'User not found'})
+        }
     })
 })
 
@@ -211,7 +215,6 @@ app.post('/newpost', (req, res) => {
 /* ENVIAR OS POSTS */
 app.get('/posts', function(req, res) {
     const numberOfPosts = Number(req.query.numberOfPosts)
-    console.log(numberOfPosts)
 
     postCollection.find().limit(numberOfPosts).then(doc => {
         let lightVersion = []
@@ -338,7 +341,11 @@ app.get('/friendlist/:username', (req, res) => {
     const username = req.params.username
 
     usersCollection.findOne({username: username}).select({friends: 1}).then(doc => {
-        res.send(doc.friends.friendlist)
+        if(doc) {
+            res.send({friendlist: doc.friends.friendlist, success: true})
+        } else {
+            res.send({friendlist: [], success: false})
+        }
     })
 })
 
@@ -432,6 +439,24 @@ app.delete('/deletefriend', (req, res) => {
     usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendlist': {userid: userid}}}, err => {
         err ? console.log(err) : res.send('friend deleted')
     })
+})
+
+
+
+app.get('/notification', (req, res ) => {
+    const {db_user_id} = req.query
+
+    usersCollection.findById({_id: db_user_id}).select({'friends.friendrequest': true}).then(doc => {
+        res.send({
+            friend: {
+                value: doc.friends.friendrequest.length
+            },
+            message: {
+                value: doc.friends.friendrequest.length
+            }
+        })
+    })
+
 })
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
