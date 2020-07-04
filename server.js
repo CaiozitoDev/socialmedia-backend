@@ -268,7 +268,7 @@ app.post('/post-buttons', (req, res) => {
 app.patch('/post-buttons', (req, res) => {
     const {iconName, postid, isButtonClicked, db_user_id} = req.body
 
-    postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, (err) => {err && console.log(err)})
+    postCollection.updateOne({_id: postid}, {$inc: {[iconName]: isButtonClicked ? 1 : -1}}, err => {err && console.log(err)})
      
     usersCollection.findOneAndUpdate({_id: db_user_id, 'reactedposts.postid': postid}, {$set: {[`reactedposts.$.${iconName}`]: isButtonClicked}}, (err, doc) => {
         if(!err) {
@@ -278,6 +278,10 @@ app.patch('/post-buttons', (req, res) => {
                     love: false,
                 }
                 usersCollection.updateOne({_id: db_user_id}, {$push: {reactedposts: {postid, ...teste, [iconName]: true}}}, (err) => {err && console.log(err)})
+            } else {
+                for(let post of doc.reactedposts) {
+                    !post.like && !post.love && usersCollection.updateOne({_id: db_user_id}, {$pull: {'reactedposts': {'postid': post.postid}}}, err => {err && console.log(err)})
+                }
             }
         } else {
             console.log(err)
@@ -286,7 +290,7 @@ app.patch('/post-buttons', (req, res) => {
         res.send('Reaction sent') 
     })
 })
-/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /* PEGAR POST ÚNICO */
