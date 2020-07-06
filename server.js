@@ -28,6 +28,7 @@ let upload = multer()
 
 const postCollection = require('./database/postModel')
 const usersCollection = require('./database/userModel')
+const chatCollection = require('./database/chatModel')
 
 mongoose.connect(process.env.MONGO_API_ADDRESS, {useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false})
     .then(() => {console.log('MongoDB Connected')})
@@ -437,6 +438,8 @@ app.post('/friendrequestresult', (req, res) => {
     })
 })
 
+
+/* DELETA UM AMIGO DA LISTA DE AMIGOS */
 app.delete('/deletefriend', (req, res) => {
     const {db_user_id, userid} = req.query
 
@@ -446,7 +449,7 @@ app.delete('/deletefriend', (req, res) => {
 })
 
 
-
+/* MOSTRA A NOTIFICAÇÃO DOS NÚMEROS DE MENSAGENS E SOLICITAÇÕES DE AMIZADE */
 app.get('/notification', (req, res ) => {
     const {db_user_id} = req.query
 
@@ -464,6 +467,64 @@ app.get('/notification', (req, res ) => {
 })
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+app.get('/chat', (req, res) => {
+    const {db_user_id, userid} = req.query
+
+    usersCollection.find({_id: {$in: [db_user_id, userid]}}).select({username: true, userPhoto: true, chat: true}).then(doc => {
+        let same_value_array = doc[0].chat.filter(e => doc[1].chat.indexOf(e) !== -1)
+        // same_value_array verifica se tem o mesmo chatID entre os dois usuários
+        
+        if(same_value_array.length == 1) {
+            res.send(same_value_array[0])
+        } else {
+            const newChat = new chatCollection({
+                members: [
+                    {
+                        userid: `${doc[0]._id}`,
+                        username: doc[0].username,
+                        userPhoto: doc[0].userPhoto
+                    },
+                    {
+                        userid: `${doc[1]._id}`,
+                        username: doc[1].username,
+                        userPhoto: doc[1].userPhoto
+                    }
+                ]
+            })
+
+            newChat.save((err, newdoc) => {
+                let id = String(newdoc._id)
+                usersCollection.updateMany({_id: {$in: [db_user_id, userid]}}, {$push: {chat: id}}).then(() => {
+                    res.send(id)
+                })
+            })
+        }
+    }) 
+})
+
+
+app.get('/chat/:chatid', (req, res) => {
+    const chatid = req.params.chatid
+
+    chatCollection.findById({_id: chatid}).then(doc => {
+        res.send(doc)
+    })
+})
+
+
+app.post('/newmessage', (req, res) => {
+    const {db_user_id, chatid, messagetext, username, userPhoto} = req.body
+
+    chatCollection.findByIdAndUpdate({_id: chatid}, {$push: {messages: {
+        userid: db_user_id,
+        username: username,
+        userPhoto: userPhoto,
+        messagetext: messagetext
+    }}}).then(() => {
+        res.send('Message sent')
+    })
+})
 
 
  

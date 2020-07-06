@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     userPhoto: {
         type: Object,
     },
-    posts: Array,
+    chat: Array,
     reactedposts: Array,
     friends: {
         friendrequest: Array,
