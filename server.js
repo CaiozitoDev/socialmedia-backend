@@ -181,10 +181,28 @@ app.get('/profile/:username', (req, res) => {
     username !== 'favicon.ico' &&
     usersCollection.findOne({username: username}, (err, doc) => {
         if(doc) {
-            res.send({src: doc.userPhoto, username: doc.username})
+            res.send({src: doc.userPhoto, username: doc.username, userid: doc._id})
         } else {
-            res.send({src: 'https://image.flaticon.com/icons/png/512/718/718672.png', username: 'User not found'})
+            res.send({src: 'https://image.flaticon.com/icons/png/512/718/718672.png', username: 'User not found', userid: ''})
         }
+    })
+})
+
+
+app.get('/userpost', (req, res) => {
+    const {username} = req.query
+    postCollection.find({headerusername: username}).then(doc => {
+        let lightVersion = []
+        doc.map(post => {
+            lightVersion.push({
+                headerusername: post.headerusername,
+                headerphoto: post.headerphoto,
+                bodytext: post.bodytext,
+                _id: post._id,
+                userid: post.userid
+            })
+        })
+        res.send(lightVersion)
     })
 })
 
