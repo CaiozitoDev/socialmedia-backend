@@ -181,7 +181,12 @@ app.get('/profile/:username', (req, res) => {
     username !== 'favicon.ico' &&
     usersCollection.findOne({username: username}, (err, doc) => {
         if(doc) {
-            res.send({src: doc.userPhoto, username: doc.username, userid: doc._id})
+            res.send({src: doc.userPhoto,
+                username: doc.username,
+                userid: doc._id,
+                friendslength: `${doc.friends.friendlist.length}`,
+                date: doc.timestamp
+            })
         } else {
             res.send({src: 'https://image.flaticon.com/icons/png/512/718/718672.png', username: 'User not found', userid: ''})
         }
@@ -191,7 +196,9 @@ app.get('/profile/:username', (req, res) => {
 
 app.get('/userpost', (req, res) => {
     const {username} = req.query
-    postCollection.find({headerusername: username}).then(doc => {
+    const numberOfPosts = Number(req.query.numberOfPosts)
+
+    postCollection.find({headerusername: username}).limit(numberOfPosts).then(doc => {
         let lightVersion = []
         doc.map(post => {
             lightVersion.push({
@@ -381,7 +388,6 @@ app.post('/arefriends', (req, res) => {
             if(doc.friends.friendlist[0]) {
                 res.send(true)
             } else {
-                console.log(2)
                 if(doc.friends.sentrequest.indexOf(postuserid) !== -1) {
                     res.send('sent')
                 } else {
@@ -517,9 +523,16 @@ app.get('/chat', (req, res) => {
 app.get('/chat/:chatid', (req, res) => {
     const chatid = req.params.chatid
 
-    chatCollection.findById({_id: chatid}).then(doc => {
-        res.send(doc)
-    })
+    const valid = mongoose.isValidObjectId(chatid)
+
+    !valid ? res.send({found: false}) :
+        chatCollection.findOne({_id: chatid}).then(doc => {
+            if(doc) {
+                res.send({found: true, doc: doc})
+            } else {
+                res.send({found: false})
+            }
+        })
 })
 
 
@@ -544,7 +557,6 @@ app.get('/lastchat', (req, res) => {
         const chatList = []
 
         doc.map(member => {
-            console.log(member.members)
             const chatid = member._id
 
             if(member.members[0].userid !== db_user_id) {
