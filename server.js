@@ -454,16 +454,8 @@ app.get('/notification', (req, res ) => {
     const {db_user_id} = req.query
 
     usersCollection.findById({_id: db_user_id}).select({'friends.friendrequest': true}).then(doc => {
-        res.send({
-            friend: {
-                value: doc.friends.friendrequest.length
-            },
-            message: {
-                value: doc.friends.friendrequest.length
-            }
-        })
+        res.send(`${doc.friends.friendrequest.length}`)
     })
-
 })
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -527,6 +519,50 @@ app.post('/newmessage', (req, res) => {
 })
 
 
+app.get('/lastchat', (req, res) => {
+    const {db_user_id} = req.query
+
+    chatCollection.find({'members.userid': `${db_user_id}`}).select({'members': true}).limit(7).sort('-1').then(doc => {
+        const chatList = []
+
+        doc.map(member => {
+            console.log(member.members)
+            const chatid = member._id
+
+            if(member.members[0].userid !== db_user_id) {
+                const user = member.members[0]
+                chatList.push({user, chatid})
+            } else {
+                const user = member.members[1]
+                chatList.push({user, chatid})
+            }
+        })
+
+        res.send(chatList)
+    })
+})
+//////////////////////////////////////////////////////////////////////////////////////
+
+app.get('/messagelist', (req, res) => {
+    const {db_user_id, notification} = req.query
+
+    chatCollection.find({'members.userid': `${db_user_id}`}).select({messages: true}).then(doc => {
+        const notSawMessages = []
+
+        doc.map(chat => {
+            if(chat.messages[chat.messages.length - 1].userid !== db_user_id) {
+                const lastMessage = chat.messages[chat.messages.length - 1]
+                notSawMessages.push({...lastMessage, chatid: chat._id})
+            }
+        })
+        
+        if(notification) {
+            res.send(`${notSawMessages.length}`)
+        } else {
+            res.send(notSawMessages)
+        }
+    })
+})
  
 
 
