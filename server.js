@@ -206,7 +206,8 @@ app.get('/userpost', (req, res) => {
                 headerphoto: post.headerphoto,
                 bodytext: post.bodytext,
                 _id: post._id,
-                userid: post.userid
+                userid: post.userid,
+                date: post.timestamp
             })
         })
         res.send(lightVersion)
@@ -250,7 +251,8 @@ app.get('/posts', function(req, res) {
                 headerphoto: post.headerphoto,
                 bodytext: post.bodytext,
                 _id: post._id,
-                userid: post.userid
+                userid: post.userid,
+                date: post.timestamp
             })
         })
         res.send(lightVersion)
@@ -591,6 +593,17 @@ app.get('/messagelist', (req, res) => {
         } else {
             res.send(notSawMessages)
         }
+    })
+})
+///////////////////////////////////////////////////////////////////////////////////////////
+
+app.get('/userfilter', (req, res) => {
+    const {username} = req.query
+
+    usersCollection.find({username: {$regex: username, $options: 'i'}}).select({
+        userPhoto: true, username: true
+    }).then(doc => {
+        res.send(doc)
     })
 })
  
