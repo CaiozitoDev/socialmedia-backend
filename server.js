@@ -210,7 +210,9 @@ app.get('/userpost', (req, res) => {
                 date: post.timestamp
             })
         })
-        res.send(lightVersion)
+        postCollection.countDocuments().then(value => {
+            res.send({posts: lightVersion, postLength: value})
+        })
     })
 })
 
@@ -243,7 +245,7 @@ app.post('/newpost', (req, res) => {
 app.get('/posts', function(req, res) {
     const numberOfPosts = Number(req.query.numberOfPosts)
 
-    postCollection.find().limit(numberOfPosts).then(doc => {
+    postCollection.find().sort({timestamp: -1}).limit(numberOfPosts).then(doc => {
         let lightVersion = []
         doc.map(post => {
             lightVersion.push({
@@ -255,7 +257,10 @@ app.get('/posts', function(req, res) {
                 date: post.timestamp
             })
         })
-        res.send(lightVersion)
+
+        postCollection.countDocuments().then(value => {
+            res.send({posts: lightVersion, postLength: value})
+        })
     })
 })
 
@@ -539,12 +544,11 @@ app.get('/chat/:chatid', (req, res) => {
 
 
 app.post('/newmessage', (req, res) => {
-    const {db_user_id, chatid, messagetext, username, userPhoto} = req.body
+    const {db_user_id, chatid, messagetext, username} = req.body
 
     chatCollection.findByIdAndUpdate({_id: chatid}, {$push: {messages: {
         userid: db_user_id,
         username: username,
-        userPhoto: userPhoto,
         messagetext: messagetext
     }}}).then(() => {
         res.send('Message sent')
@@ -555,7 +559,7 @@ app.post('/newmessage', (req, res) => {
 app.get('/lastchat', (req, res) => {
     const {db_user_id} = req.query
 
-    chatCollection.find({'members.userid': `${db_user_id}`}).select({'members': true}).limit(7).sort('-1').then(doc => {
+    chatCollection.find({'members.userid': `${db_user_id}`}).select({'members': true}).limit(7).sort({timestamp: -1}).then(doc => {
         const chatList = []
 
         doc.map(member => {
@@ -599,11 +603,15 @@ app.get('/messagelist', (req, res) => {
 
 app.get('/userfilter', (req, res) => {
     const {username} = req.query
+    const numberOfUsers = Number(req.query.numberOfUsers)
 
     usersCollection.find({username: {$regex: username, $options: 'i'}}).select({
         userPhoto: true, username: true
-    }).then(doc => {
-        res.send(doc)
+    }).limit(numberOfUsers).then(doc => {
+
+        usersCollection.find({username: {$regex: username, $options: 'i'}}).countDocuments().then(value => {
+            res.send({users: doc, userLength: `${value}`})
+        })
     })
 })
  
