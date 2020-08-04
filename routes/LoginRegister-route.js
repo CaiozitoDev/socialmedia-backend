@@ -87,10 +87,16 @@ route.post('/logindata', upload.any(), (req, res) => {
 /* LOGIN/REGISTER COM A API DO FACEBOOK */
 route.post('/facebook', (req, res) => {
     const {name, userID, url} = req.body
+    console.log(req.body)
 
     usersCollection.findOne({fbId: userID}, (err, doc) => {
         if(!err) {
             if(doc) {
+                if(doc.userPhoto != url) {
+                    usersCollection.updateOne({fbId: userID}, {userPhoto: url}).then(err => {
+                        err && console.log(err)
+                    })
+                }
                 const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
                 res.send({redirect: true, token: generatedToken})
             } else {
