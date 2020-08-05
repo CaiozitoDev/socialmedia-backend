@@ -21,17 +21,15 @@ route.post('/arefriends', (req, res) => {
 
     usersCollection.findById({_id: db_user_id}, {'friends.friendlist.userid': postuserid, 'friends.sentrequest': postuserid}, (err, doc) => {
         if(!err) {
-            if(doc.friends.friendlist[0]) {
-                res.send(true)
+            doc.friends.friendlist.map(friend => {
+                return friend.userid
+            }).indexOf(postuserid) == true && res.send(true)
+                 
+            if(doc.friends.sentrequest.indexOf(postuserid) !== -1) {
+                res.send('sent')
             } else {
-                if(doc.friends.sentrequest.indexOf(postuserid) !== -1) {
-                    res.send('sent')
-                } else {
-                    res.send(false)
-                }
+                res.send(false)
             }
-        } else {
-            console.log(err)
         }
     })
 })
