@@ -19,10 +19,7 @@ io.on('connection', socket => {
 })
 
 // MIDDLEWARES
-app.use(cors({
-    credentials: true,
-    origin: 'http://localhost:3000'
-}))
+app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 app.use(session({
