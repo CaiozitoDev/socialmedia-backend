@@ -19,7 +19,9 @@ io.on('connection', socket => {
 })
 
 // MIDDLEWARES
-app.use(cors())
+app.use(cors({
+    allowedHeaders: ['authorization']
+}))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 app.use(session({
