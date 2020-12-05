@@ -20,7 +20,7 @@ io.on('connection', socket => {
 
 // MIDDLEWARES
 app.use(cors({
-    allowedHeaders: ['Authorization']
+    exposedHeaders: ['Authorization']
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
