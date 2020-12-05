@@ -1,94 +1,178 @@
 const route = require('express').Router()
 const mongoose = require('mongoose')
+const yup = require('yup')
+const mongoTimestampFormat = require('../utils/mongoTimestampFormat')
 
 const usersCollection = require('../database/userModel')
 const chatCollection = require('../database/chatModel')
 
-route.get('/chat', (req, res) => {
+route.get('/chat', (req, res, next) => {
     const {db_user_id, userid} = req.query
 
-    usersCollection.find({_id: {$in: [db_user_id, userid]}}).select({username: true, userPhoto: true, chat: true}).then(doc => {
-        let same_value_array = doc[0].chat.filter(e => doc[1].chat.indexOf(e) !== -1)
-        // same_value_array verifica se tem o mesmo chatID entre os dois usuários
-        
-        if(same_value_array.length == 1) {
-            res.send(same_value_array[0])
-        } else {
-            const newChat = new chatCollection({
-                members: [
-                    {
-                        userid: `${doc[0]._id}`,
-                        username: doc[0].username,
-                        userPhoto: doc[0].userPhoto
-                    },
-                    {
-                        userid: `${doc[1]._id}`,
-                        username: doc[1].username,
-                        userPhoto: doc[1].userPhoto
-                    }
-                ]
-            })
+    let schema = yup.object().shape({
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        userid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required()
+    })
 
-            newChat.save((err, newdoc) => {
-                let id = String(newdoc._id)
-                usersCollection.updateMany({_id: {$in: [db_user_id, userid]}}, {$push: {chat: id}}).then(() => {
-                    res.send(id)
+    schema.validate({
+        db_user_id,
+        userid
+    }, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.find({_id: {$in: [mongoose.Types.ObjectId(db_user_id), mongoose.Types.ObjectId(userid)]}}, {
+            username: true,
+            photo: true,
+            activeChats: true
+        }).then(doc => {
+            if(doc.length > 1) {
+                doc[0] = doc[0].toJSON()
+                doc[1] = doc[1].toJSON()
+
+                let same_chat_id = doc[0].activeChats.filter(e => {
+                    return (doc[1].activeChats.indexOf(e) !== -1)
                 })
-            })
-        }
-    }) 
+                // same_chat_id verifica se tem o mesmo chatID entre os dois usuários
+
+                if(!same_chat_id) {
+                    res.send({
+                        chatId: same_chat_id[0]
+                    })
+                } else { 
+                    const newChat = new chatCollection({
+                        members: doc.map(user => {
+                            return {
+                                userId: mongoose.Types.ObjectId(user._id),
+                                username: user.username,
+                                photo: user.photo
+                            }
+                        })
+                    })
+        
+                    newChat.save().then(newDoc => {
+                        usersCollection.updateMany({_id: {$in: [mongoose.Types.ObjectId(db_user_id), mongoose.Types.ObjectId(userid)]}}, {
+                            $push: {activeChats: mongoose.Types.ObjectId(newDoc._id)}
+                        }).then(() => {
+                            res.send({
+                                chatId: newDoc._id
+                            })
+                        })
+                    }).catch(err => next(err))
+                }
+            } else {
+                res.status(404).send({
+                    message: 'Chat not found.'
+                })
+            }
+        }) 
+    }).catch(err => next(err))
 })
 
 
-route.get('/chat/:chatid', (req, res) => {
+route.get('/chat/:chatid', (req, res, next) => {
     const chatid = req.params.chatid
 
-    const valid = mongoose.isValidObjectId(chatid)
+    let schema = yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        return mongoose.isValidObjectId(value)
+    }).required()
 
-    !valid ? res.send({found: false}) :
-        chatCollection.findOne({_id: chatid}).then(doc => {
+    schema.validate(chatid, {abortEarly: false}).then(() => {
+        chatCollection.findById({_id: mongoose.Types.ObjectId(chatid)}).then(doc => {
             if(doc) {
-                res.send({found: true, doc: doc})
+                doc.messages.forEach(msg => {
+                    if(msg.timestamp) msg.timestamp = mongoTimestampFormat.toDateAndTime(msg.timestamp)
+                })
+
+                res.send({
+                    chatData: doc
+                })
             } else {
-                res.send({found: false})
+                res.status(404).send({
+                    message: 'Chat data not found.'
+                })
             }
-        })
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 })
 
 
-route.post('/newmessage', (req, res) => {
-    const {db_user_id, chatid, messagetext, username} = req.body
+route.post('/newmessage', (req, res, next) => {
+    const {db_user_id, chatid, content, username} = req.body
 
-    chatCollection.findByIdAndUpdate({_id: chatid}, {$push: {messages: {
-        userid: db_user_id,
-        username: username,
-        messagetext: messagetext
-    }}}).then(() => {
-        res.send('Message sent')
+    let schema = yup.object().shape({
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        chatid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        content: yup.string().min(1).trim().strict().required(),
+        username: yup.string().min(3).trim().strict().required(),
     })
+
+    schema.validate({
+        db_user_id,
+        chatid,
+        content,
+        username
+    }, {
+        abortEarly: false
+    }).then(() => {
+        chatCollection.findOneAndUpdate({ 'members.userId': mongoose.Types.ObjectId(db_user_id), 'members.username': username, _id: mongoose.Types.ObjectId(chatid)}, {$push: {messages: {
+            userId: mongoose.Types.ObjectId(db_user_id),
+            username,
+            content,
+            timestamp: new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()))
+        }}}).then(doc => {
+            if(doc) {
+                res.send({
+                    message: 'Message sent successfully.'
+                })
+            } else {
+                res.send({
+                    message: 'Could not find chat data.'
+                })
+            }
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 })
 
 
-route.get('/lastchat', (req, res) => {
+route.get('/lastchat', (req, res, next) => {
     const {db_user_id} = req.query
 
-    chatCollection.find({'members.userid': `${db_user_id}`}).select({'members': true}).limit(7).sort({timestamp: -1}).then(doc => {
-        const chatList = []
+    let schema = yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        return mongoose.isValidObjectId(value)
+    }).required()
 
-        doc.map(member => {
-            const chatid = member._id
-
-            if(member.members[0].userid !== db_user_id) {
-                const user = member.members[0]
-                chatList.push({user, chatid})
+    schema.validate(db_user_id, {abortEarly: false}).then(() => {
+        chatCollection.find({'members.userId': mongoose.Types.ObjectId(db_user_id)}, {
+            members: true
+        }).limit(7).sort({_id: -1}).then(doc => {
+            if(doc) {
+                let chatList = doc.map(member => {
+                    let memberIndex = member.members[0].userId != db_user_id ? 0 : 1
+                    
+                    return {
+                        user: member.members[memberIndex],
+                        chatid: member._id
+                    }
+                })
+    
+                res.send({
+                    chatList
+                })
             } else {
-                const user = member.members[1]
-                chatList.push({user, chatid})
+                res.status(404).send({
+                    message: 'Chat list not found.'
+                })
             }
         })
-
-        res.send(chatList)
-    })
+    }).catch(err => next(err))
 })
 
 module.exports = route

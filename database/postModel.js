@@ -1,34 +1,55 @@
 const mongoose = require('mongoose')
 
 const postSchema = new mongoose.Schema({
-    userid: {
-        type: String
+    userId: {
+        type: mongoose.Types.ObjectId,
+        required: true
     },
-    headerphoto: {
+    photo: {
         required: true,
         type: String
     },
-    headerusername: {
+    username: {
         required: true,
         type: String,
     },
-    bodytext: {
+    content: {
         required: true,
         type: String
     },
     like: {
-        type: Number
+        type: Number,
+        default: 0
     },
     love: {
-        type: Number
+        type: Number,
+        default: 0
     },
-    comment: {
-        type: Array
-    },
+    comments: [{
+        type: Object,
+        userId: {
+            required: true,
+            type: mongoose.Types.ObjectId
+        },
+        username: {
+            required: true,
+            type: String
+        },
+        photo: {
+            required: true,
+            type: String
+        },
+        content: {
+            required: true,
+            type: String
+        }
+    }],
     timestamp: {
         type: Date,
-        default: Date.now
+        default: () => {
+            return new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()));
+        }
     }
 })
 
-module.exports = mongoose.model('postsCollection', postSchema)
+module.exports = mongoose.model('posts', postSchema)

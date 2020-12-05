@@ -2,121 +2,149 @@ const dotenv = require('dotenv').config()
 const bcrypt = require('bcrypt')
 const multer = require('multer')
 const jwt = require('jsonwebtoken')
+const yup = require('yup')
 
+const Firebase = require('../utils/firebase')
 const usersCollection = require('../database/userModel')
 
 let upload = multer()
 
-// functions
-const formatPhotoData = require('../functions/formatPhotoData')
-
 const route = require('express').Router()
 
-
-/* ROTAS DE AUTENTICAÇÃO */
-route.post('/registerdata', upload.single('fileimage'), (req, res) => {
-    const {username, password} = req.body
-    const profilePhoto = req.file
-
-    if(username !== '' && password !== '') {
-        usersCollection.findOne({username: username}, (err, doc) => {
-            if(!err) {
-                if(doc) {
-                    res.send({message: 'User already exist', redirect: false})
-                } else {
-                    bcrypt.hash(password, 10, (error, hash) => {
-                        if(!error) {
-                            const newUser = new usersCollection({
-                                username: username,
-                                password: hash,
-                                userPhoto: formatPhotoData(profilePhoto),
-                            })
-
-                            const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
-
-                            newUser.save((saveError) => {
-                                saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
-                            })
-                        } else {
-                            console.log(error)
-                        }
-                    })
-                }
-            } else {
-                console.log(err)
-            }
-        })
-    } else {
-        res.send({message: 'Blank data is not accept', redirect: false})
-    }
-})
-
-route.post('/logindata', upload.any(), (req, res) => {
-    const {username, password} = req.body
-
-    if(username !== '' && password !== '') {
-        usersCollection.findOne({username: username}, (err, doc) => {
-            if(!err) {
-                if(doc) {
-                    bcrypt.compare(password, doc.password, (error, result) => {
-                        if(!error) {
-                            if(result) {
-                                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
-
-                                res.send({redirect: true, token: generatedToken})
-                            } else {
-                                res.send({message: 'Incorrect data', redirect: false})
-                            }
-                        } else {
-                            console.log(error)
-                        }
-                    })
-                } else {
-                    res.send({message: 'User not found', redirect: false})
-                }
-            } else {
-                console.log(err)
-            }
-        })
-    } else {
-        res.send({message: 'Blank data is not accept', redirect: false})
-    }
-})
-
-
-/* LOGIN/REGISTER COM A API DO FACEBOOK */
-route.post('/facebook', (req, res) => {
-    const {name, userID, url} = req.body
-    console.log(req.body)
-
-    usersCollection.findOne({fbId: userID}, (err, doc) => {
-        if(!err) {
-            if(doc) {
-                if(doc.userPhoto != url) {
-                    usersCollection.updateOne({fbId: userID}, {userPhoto: url}).then(err => {
-                        err && console.log(err)
-                    })
-                }
-                const generatedToken = jwt.sign({db_user_id: doc._id, username: doc.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
-                res.send({redirect: true, token: generatedToken})
-            } else {
-                const newUser = new usersCollection({
-                    username: name,
-                    fbId: userID,
-                    userPhoto: url
-                })
-
-                const generatedToken = jwt.sign({db_user_id: newUser._id, username: newUser.username}, process.env.TOKEN_SECRET, {expiresIn: '7d'})
-
-                newUser.save((saveError) => {
-                    saveError ? console.log(saveError) : res.send({redirect: true, token: generatedToken})
-                })
-            }
-        } else {
-            console.log(err)
-        }
+yup.addMethod(yup.object, 'atLeastOneOf', function(list) {
+    return this.test({
+        name: 'atLeastOneOf',
+        message: 'At least one of these keys must to be received: ${keys}',
+        exclusive: true,
+        params: { keys: list.join(', ') },
+        test: value => value == null || list.some(f => value[f] != null)
     })
 })
 
+/* ROTAS DE AUTENTICAÇÃO */
+route.post('/register', upload.single('photo'), (req, res, next) => {
+    const {login, username, password, fbId} = req.body
+    const profilePhoto = req.file
+
+    const schema = yup.object().shape({
+        login: yup.string().required().min(4).trim().strict().matches(/^[a-zA-Z0-9_.-]*$/, 'Special characters and spaces are not allowed.'),
+        username: yup.string().required().min(3).trim().strict().matches(/^[a-zA-Z\s]*$/, 'Special characters are not allowed.'),
+        profilePhoto: yup.object().shape({
+            size: yup.number().moreThan(0).required(),
+            mimetype: yup.string().equals(['image/png', 'image/jpg', 'image/jpeg']).required()
+        }),
+        password: yup.string().trim().strict(),
+        fbId: yup.string().trim().strict()
+    }).atLeastOneOf(['password', 'fbId'])
+
+    schema.validate({
+        login,
+        username,
+        profilePhoto,
+        password,
+        fbId
+    }, {
+        abortEarly: false,
+    }).then(() => {
+            usersCollection.exists({login: login}).then(exists => {
+                if(exists) {
+                    res.status(401).send({message: `Login: '${login}' already registered, please, insert another one.`, redirect: false})
+                } else {
+                    Firebase.uploadImage(profilePhoto, Date.now(), username).then(url => {
+                        bcrypt.hash(password ? password : fbId, 10,).then(hash => {
+                            const userData = {
+                                login,
+                                username,
+                                photo: url,
+                            }
+    
+                            if(fbId) {userData.fbId = hash} else {userData.password = hash}
+    
+                            const newUser = new usersCollection(userData)
+    
+                            const generatedToken = jwt.sign({
+                                db_user_id: newUser._id, 
+                                username: newUser.username,
+                                photo: url
+                            }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
+    
+                            req.session.user = jwt.decode(generatedToken)
+
+                            newUser.save()
+                                .then(() => {
+                                    res.cookie('token', generatedToken, {
+                                        httpOnly: true
+                                    }).send({
+                                        message: 'Registration successfully',
+                                        authorized: true
+                                    })
+                                }).catch(saveError => next(saveError))
+                        }).catch(err => next(err))
+                    }).catch(err => next(err))
+                }
+            }).catch(err => next(err))
+    }).catch(err => next(err))
+})
+
+
+route.post('/login', upload.any(), (req, res, next) => {
+    const {login, password, fbId} = req.body
+    
+    const schema = yup.object().shape({
+        login: yup.string().required().min(4).trim().strict(),
+        password: yup.string().trim().strict(),
+        fbId: yup.string().trim().strict()
+    }).atLeastOneOf(['password', 'fbId'])
+
+    schema.validate({
+        login,
+        password,
+        fbId
+    }).then(() => {
+        usersCollection.findOne({login: login}, {
+            _id: true,
+            username: true,
+            password: true,
+            fbId: true,
+            photo: true
+        }).then(doc => {
+                if(doc) {
+                    bcrypt.compare(password ? password : fbId, doc.password ? doc.password : doc.fbId).then(result => {
+                        if(result) {
+                            const generatedToken = jwt.sign({
+                                db_user_id: doc._id, 
+                                username: doc.username, 
+                                photo: doc.photo
+                            }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
+
+                            req.session.user = jwt.decode(generatedToken)
+
+                            res.cookie('token', generatedToken, {
+                                httpOnly: true
+                            }).send({
+                                message: 'Login successfully',
+                                authorized: true
+                            })
+                        } else {
+                            res.status(401).send({message: 'Incorrect user data.', redirect: false})
+                        }
+                    }).catch(err => next(err))
+                } else {
+                    res.status(404).send({message: 'User not found.', redirect: false})
+                }
+        }).catch(err => next(err))
+    }).catch(err => next(err))
+})
+
+route.get('/', (req, res) => {
+    res.send({
+        message: 'Authenticated successfully.',
+        userData: req.session.user ? {
+            db_user_id: req.session.user.db_user_id,
+            photo: req.session.user.photo,
+            username: req.session.user.username
+        } : null
+    })
+})
 
 module.exports = route

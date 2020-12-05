@@ -1,125 +1,285 @@
 const route = require('express').Router()
+const yup = require('yup')
+const mongoose = require('mongoose')
 
 const usersCollection = require('../database/userModel')
 
 /* REPASSA LISTA DE AMIGOS NA FRIENDS PAGE */
-route.get('/friendlist/:username', (req, res) => {
-    const username = req.params.username
+route.get('/friendlist/:db_user_id', (req, res, next) => {
+    const db_user_id = req.params.db_user_id
 
-    usersCollection.findOne({username: username}).select({friends: 1}).then(doc => {
-        if(doc) {
-            res.send({friendlist: doc.friends.friendlist, success: true})
-        } else {
-            res.send({friendlist: [], success: false})
-        }
-    })
+    let schema = yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        return mongoose.isValidObjectId(value)
+    }).required()
+
+    schema.validate(db_user_id, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.findById({_id: mongoose.Types.ObjectId(db_user_id)}, {
+            'friends.friendList': true
+        }).then(doc => {
+            if(doc) {
+                doc = doc.toJSON()
+        
+                res.send({friendList: doc.friends.friendList, success: true})
+            } else {
+                res.send({friendList: [], success: false})
+            }
+        })
+    }).catch(err => next(err))
 })
 
 /* VERIFICA SE JÁ SÃO AMIGOS */
-route.post('/arefriends', (req, res) => {
+route.post('/arefriends', (req, res, next) => {
     const {postuserid, db_user_id} = req.body
 
-    usersCollection.findById({_id: db_user_id}, {'friends.friendlist.userid': postuserid, 'friends.sentrequest': postuserid}, (err, doc) => {
-        if(!err) {
-            let areFriends
-
-            doc.friends.friendlist.map(friend => {
-                if(friend.userid == postuserid) {areFriends = true}
-            })
-
-            if(areFriends) {
-                res.send(true)
-            } else if(doc.friends.sentrequest.indexOf(postuserid) !== -1) {
-                res.send('sent')
-            } else {
-                res.send(false)
-            }
-        } else {
-            console.log(err)
-        }
+    let schema = yup.object().shape({
+        postuserid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required().test('Equal', 'Equal IDs are not allowed', () => {
+            return (db_user_id == postuserid)
+        })
     })
+
+    schema.validate({
+        postuserid,
+        db_user_id
+    }, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.findById({_id: mongoose.Types.ObjectId(db_user_id)}, {
+            'friends.friendList.userId': true,
+            'friends.sentRequests': true
+        }).then(doc => {
+            if(doc) {
+                doc = doc.toJSON()
+                let areFriends
+
+                doc.friends.friendList.map(friend => {
+                    if(friend.userId == postuserid) {areFriends = true}
+                })
+    
+                if(areFriends) {
+                    res.send({
+                        status: 'accepted'
+                    })
+                } else if(doc.friends.sentRequests.indexOf(postuserid) !== -1) {
+                    res.send({
+                        status: 'sent'
+                    })
+                } else {
+                    res.send({
+                        message: 'denied'
+                    })
+                }
+            } else {
+                res.status(404).send({
+                    message: 'Friendship data not found.'
+                })
+            }
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 })
 
 /* ATUALIZAR LISTA DE CONVITES DE AMIZADE QUANDO ENVIAM SOLICITAÇÃO */
-route.patch('/friendrequest', (req, res) => {
+route.patch('/friendrequest', (req, res, next) => {
     const {db_user_id, postuserid} = req.body
 
-    usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {'friends.sentrequest': postuserid}}, (err1, doc1) => {
-        if(!err1) {
-            const request = {
-                userid: db_user_id,
-                username: doc1.username,
-                photo: doc1.userPhoto
-            }
-
-            usersCollection.updateOne({_id: postuserid}, {$push: {'friends.friendrequest': request}}, (err) => {
-                err ? console.log(err) : res.send('Friend request sent')
-            })
-        } else {
-            console.log(err1)
-        }
+    let schema = yup.object().shape({
+        postuserid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required()
     })
+
+    schema.validate({
+        postuserid,
+        db_user_id
+    }, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.findByIdAndUpdate({_id: mongoose.Types.ObjectId(db_user_id)}, 
+        {$push: {
+            'friends.sentRequests': mongoose.Types.ObjectId(postuserid)
+        }}, {fields: {
+            username: true,
+            photo: true
+        }}).then(doc => {
+            if(doc) { 
+                let request = {
+                    userId: doc._id,
+                    username: doc.username,
+                    photo: doc.photo
+                }
+
+                usersCollection.updateOne({_id: mongoose.Types.ObjectId(postuserid)}, {$push: {'friends.friendRequests': request}}).then(() => {
+                    res.send({
+                        message: 'Friend request sent successfully.'
+                    })
+                }).catch(err => next(err))
+            } else {
+                res.status(404).send({
+                    message: 'User not found.'
+                })
+            }
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 }) 
 
 
 /* REPASSA A LISTA DE FRIEND REQUESTS */
-route.post('/getfriendrequest', (req, res) => {
+route.post('/getfriendrequest', (req, res, next) => {
     const db_user_id = req.body.db_user_id
 
-    usersCollection.findById({_id: db_user_id}, 'friends.friendrequest', (err, doc) => {
-        err ? console.log(err) : res.send(doc.friends.friendrequest)
-    })
+    let schema = yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        return mongoose.isValidObjectId(value)
+    }).required()
+
+    schema.validate(db_user_id, {abortEarly: false}).then(() => {
+
+    }).catch(err => next(err))
+
+    usersCollection.findById({_id: mongoose.Types.ObjectId(db_user_id)}, {'friends.friendRequest': true}).then(doc => {
+        if(doc) {
+            res.send({
+                friendRequests: doc.friends.friendrequest
+            })    
+        } else {
+            res.status(404).send({
+                message: 'User not found'
+            })
+        }
+    }).catch(err => next(err))
 })
 
 /* PROCESSA OS DADOS DE ACCEPT OU REJEIT DO PEDIDO DE AMIZADE */
-route.post('/friendrequestresult', (req, res) => {
+route.post('/friendrequestresult', (req, res, next) => {
     const {result, db_user_id, userid} = req.body
 
-    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendrequest': {userid: userid}}}, (err0) => {
-        if(!err0) {
-            if(result) {
-                const {username, photo} = req.body
-                usersCollection.findByIdAndUpdate({_id: db_user_id}, {$push: {'friends.friendlist': {userid, username, photo}}}, (err, doc) => {
-                    if(!err) {
-                        usersCollection.findByIdAndUpdate({_id: userid}, {$push: {'friends.friendlist': {
-                            userid: db_user_id,
-                            username: doc.username,
-                            photo: doc.userPhoto
-                        }},
-                        $pull: {'friends.sentrequest': db_user_id}}, (err2) => {
-                            err ? console.log(err2) : res.send('Friend request accepted.')
-                        })
-                    } else {
-                        console.log(err)
-                    }
-                })
-            } else {
-                res.send('Friend request denied.')
-            }
-        } else {
-            console.log(err0)
-        }
+    let schema = yup.object().shape({
+        result: yup.boolean().strict().required(),
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        userid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
     })
+
+    schema.validate({
+        result,
+        db_user_id,
+        userid,
+    }, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.findByIdAndUpdate({_id: mongoose.Types.ObjectId(db_user_id)}, {
+            $pull: {'friends.friendRequests': {userId: mongoose.Types.ObjectId(userid)}}
+        }, {fields: {
+            username: true,
+            photo: true
+        }}).then(doc => {
+            if(doc) {
+                if(result) {
+                    usersCollection.findByIdAndUpdate({_id: mongoose.Types.ObjectId(userid)}, {$push: {'friends.friendList': {
+                        userId: mongoose.Types.ObjectId(doc._id),
+                        username: doc.username,
+                        photo: doc.photo
+                    }}, $pull: {
+                        'friends.sentRequests': mongoose.Types.ObjectId(db_user_id)
+                    }}, {
+                        fields: {username: true, photo: true}
+                    }).then(userDoc => {
+                        doc.updateOne({$push: {'friends.friendList': {
+                            userId: userDoc._id,
+                            username: userDoc.username,
+                            photo: userDoc.photo
+                        }}}).then(() => {
+                            res.send({
+                                message: 'Friend request accepted successfully.'
+                            })
+                        }).catch(err => next(err))
+                    }).catch(err => next(err))
+                } else {
+                    res.send({
+                        message: 'Friend request denied successfully.'
+                    })
+                }
+            } else {
+                res.status(404).send({
+                    message: 'User not found.'
+                })
+            }
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 })
 
 
 /* DELETA UM AMIGO DA LISTA DE AMIGOS */
-route.delete('/deletefriend', (req, res) => {
+route.delete('/deletefriend', (req, res, next) => {
     const {db_user_id, userid} = req.query
 
-    usersCollection.updateOne({_id: db_user_id}, {$pull: {'friends.friendlist': {userid: userid}}}, err => {
-        err ? console.log(err) : res.send('friend deleted')
+    let schema = yup.object().shape({
+        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required(),
+        userid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+            return mongoose.isValidObjectId(value)
+        }).required()
     })
+
+    schema.validate({
+        db_user_id,
+        userid
+    }, {
+        abortEarly: false
+    }).then(() => {
+        usersCollection.updateOne({_id: mongoose.Types.ObjectId(db_user_id)}, {$pull: {'friends.friendList': {userId: mongoose.Types.ObjectId(userid)}}}).then(() => {
+            res.send({
+                message: 'Friend deleted successfully.'
+            })
+        }).catch(err => next(err))
+    }).catch(err => next(err))
 })
 
 
 /* MOSTRA A NOTIFICAÇÃO DOS NÚMEROS DE MENSAGENS E SOLICITAÇÕES DE AMIZADE */
-route.get('/notification', (req, res ) => {
+route.get('/notification', (req, res, next) => {
     const {db_user_id} = req.query
 
-    usersCollection.findById({_id: db_user_id}).select({'friends.friendrequest': true}).then(doc => {
-        res.send(`${doc.friends.friendrequest.length}`)
-    })
+    let schema = yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        return mongoose.isValidObjectId(value)
+    }).required()
+
+    schema.validate(db_user_id, {abortEarly: false}).then(() => {
+        usersCollection.aggregate().match({_id: mongoose.Types.ObjectId(db_user_id)})
+            .project({
+                friendsLength: {
+                    $size: '$friends.friendRequests'
+                }
+            }).exec((err, doc) => {
+                if(err) {
+                    next(err)
+                } else {
+                    if(doc) {
+                        doc = doc[0]
+
+                        res.send({
+                            friendsLength: doc.friendsLength
+                        })
+                    } else {
+                        res.status(404).send({
+                            message: 'Friend request list not found'
+                        })
+                    }
+                }
+            })
+    }).catch(err => next(err))
 })
 
 module.exports = route
