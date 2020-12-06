@@ -22,6 +22,7 @@ io.on('connection', socket => {
 app.use(cors({
     credentials: true,
     origin: 'https://frontendtestedoteste.herokuapp.com',
+    allowedHeaders: ['Set-Cookie']
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
