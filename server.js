@@ -35,7 +35,6 @@ app.use(session({
         httpOnly: true,
         maxAge: 3600000,
         sameSite: 'none',
-        secure: true
     }
 }))
 app.use(cookieParser())
