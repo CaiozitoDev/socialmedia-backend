@@ -31,7 +31,9 @@ app.use(session({
     resave: true,
     cookie: {
         httpOnly: true,
-        maxAge: 3600000
+        maxAge: 3600000,
+        sameSite: 'none',
+        secure: true
     }
 }))
 app.use(cookieParser())
