@@ -72,8 +72,9 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
 
                             newUser.save()
                                 .then(() => {
-                                    res.set({
-                                        Authorization: generatedToken
+                                    res.cookie('token', generatedToken, {
+                                        httpOnly: true,
+                                        sameSite: 'none'
                                     }).send({
                                         message: 'Registration successfully',
                                         authorized: true
@@ -119,8 +120,9 @@ route.post('/login', upload.any(), (req, res, next) => {
 
                             req.session.user = jwt.decode(generatedToken)
 
-                            res.set({
-                                Authorization: generatedToken
+                            res.cookie('token', generatedToken, {
+                                httpOnly: true,
+                                sameSite: 'none'
                             }).send({
                                 message: 'Login successfully',
                                 authorized: true
