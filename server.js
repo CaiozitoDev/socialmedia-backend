@@ -21,9 +21,7 @@ io.on('connection', socket => {
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: 'https://frontendtestedoteste.herokuapp.com',
-    allowedHeaders: ['Set-Cookie'],
-    exposedHeaders: ['Set-Cookie']
+    origin: 'https://frontendtestedoteste.herokuapp.com'
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
@@ -34,7 +32,8 @@ app.use(session({
     cookie: {
         httpOnly: true,
         maxAge: 3600000,
-        sameSite: 'none'
+        sameSite: 'none',
+        secure: true
     }
 }))
 app.use(cookieParser())
