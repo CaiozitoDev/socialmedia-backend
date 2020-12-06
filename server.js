@@ -21,7 +21,7 @@ io.on('connection', socket => {
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: 'https://frontendtestedoteste.herokuapp.com/'
+    origin: 'https://frontendtestedoteste.herokuapp.com',
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
