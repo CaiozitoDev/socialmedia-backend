@@ -33,8 +33,7 @@ app.use(session({
     cookie: {
         httpOnly: true,
         maxAge: 3600000,
-        sameSite: 'none',
-        secure: true
+        sameSite: 'lax'
     }
 }))
 app.use(cookieParser())

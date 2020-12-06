@@ -74,7 +74,7 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
                                 .then(() => {
                                     res.cookie('token', generatedToken, {
                                         httpOnly: true,
-                                        sameSite: 'none',
+                                        sameSite: 'lax',
                                         secure: true
                                     }).send({
                                         message: 'Registration successfully',
@@ -123,7 +123,7 @@ route.post('/login', upload.any(), (req, res, next) => {
 
                             res.cookie('token', generatedToken, {
                                 httpOnly: true,
-                                sameSite: 'none',
+                                sameSite: 'lax',
                                 secure: true
                             }).send({
                                 message: 'Login successfully',
