@@ -52,31 +52,35 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
                 } else {
                     Firebase.uploadImage(profilePhoto, Date.now(), username).then(url => {
                         bcrypt.hash(password ? password : fbId, 10,).then(hash => {
+                            let time = `${username}${Date.now()}`
+
                             const userData = {
                                 login,
                                 username,
                                 photo: url,
+                                sessionKey: time
                             }
     
                             if(fbId) {userData.fbId = hash} else {userData.password = hash}
     
                             const newUser = new usersCollection(userData)
     
+                            let sessionHash = bcrypt.hashSync(`${username}${time}`, 10)
+
                             const generatedToken = jwt.sign({
+                                db_user_id: newUser._id,
+                                sessionKey: sessionHash
+                            }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
+    
+                            req.session.user = {
                                 db_user_id: newUser._id, 
                                 username: newUser.username,
                                 photo: url
-                            }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
-    
-                            req.session.user = jwt.decode(generatedToken)
+                            }
 
                             newUser.save()
                                 .then(() => {
-                                    res.cookie('token', generatedToken, {
-                                        httpOnly: true,
-                                        sameSite: 'none',
-                                        secure: true
-                                    }).send({
+                                    res.cookie('token', generatedToken).send({
                                         message: 'Registration successfully',
                                         authorized: true
                                     })
@@ -113,22 +117,27 @@ route.post('/login', upload.any(), (req, res, next) => {
                 if(doc) {
                     bcrypt.compare(password ? password : fbId, doc.password ? doc.password : doc.fbId).then(result => {
                         if(result) {
-                            const generatedToken = jwt.sign({
+                            req.session.user = {
                                 db_user_id: doc._id, 
                                 username: doc.username, 
                                 photo: doc.photo
-                            }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
+                            }
 
-                            req.session.user = jwt.decode(generatedToken)
+                            let time = `${doc.username}${Date.now()}`
 
-                            res.cookie('token', generatedToken, {
-                                httpOnly: true,
-                                sameSite: 'none',
-                                secure: true
-                            }).send({
-                                message: 'Login successfully',
-                                authorized: true
-                            })
+                            doc.updateOne({$set: {sessionKey: time}}).then(() => {
+                                let sessionHash = bcrypt.hashSync(`${doc.username}${time}`, 10)
+
+                                const generatedToken = jwt.sign({
+                                    db_user_id: doc._id,
+                                    sessionKey: sessionHash
+                                }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
+
+                                res.cookie('token', generatedToken).send({
+                                    message: 'Login successfully',
+                                    authorized: true
+                                })
+                            }).catch(err => next(err))
                         } else {
                             res.status(401).send({message: 'Incorrect user data.', redirect: false})
                         }
@@ -143,11 +152,7 @@ route.post('/login', upload.any(), (req, res, next) => {
 route.get('/', (req, res) => {
     res.send({
         message: 'Authenticated successfully.',
-        userData: req.session.user ? {
-            db_user_id: req.session.user.db_user_id,
-            photo: req.session.user.photo,
-            username: req.session.user.username
-        } : null
+        userData: req.session.user ? req.session.user : null
     })
 })
 

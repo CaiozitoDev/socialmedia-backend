@@ -12,29 +12,37 @@ global.XMLHttpRequest = require('xhr2')
 const app = express()
 
 const http = require('http').createServer(app)
-const io = require('socket.io')(http)
+const io = require('socket.io')(http, {
+    cors: {
+        origin: 'https://frontendtestedoteste.herokuapp.com' /* 'http://localhost:3000' */
+    }
+})
+
+let currentSocketClient = {
+    io: io
+}
 
 io.on('connection', socket => {
-    console.log('connected to Socket.IO' + socket.id)
+    console.log('connected to Socket.IO with ID: ' + socket.id)
+    currentSocketClient['socket'] = socket
+})
+
+io.on('disconnect', socket => {
+    console.log('disconnected from Socket.IO with ID: ' + socket.id)
+    currentSocketClient = {}
 })
 
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: 'https://frontendtestedoteste.herokuapp.com',
+    origin: 'https://frontendtestedoteste.herokuapp.com',/* 'http://localhost:3000' */
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 app.use(session({
     secret: process.env.SESSION_KEY,
-    saveUninitialized: true,
-    resave: true,
-    cookie: {
-        httpOnly: true,
-        maxAge: 3600000,
-        sameSite: 'none',
-        secure: true
-    }
+    saveUninitialized: false,
+    resave: true
 }))
 app.use(cookieParser())
 app.use(authMiddleware)
@@ -42,12 +50,12 @@ app.use(authMiddleware)
 new Firebase()
 
 // LISTA DE ROTAS
-app.use(require('./routes/Chat-route'))
-app.use(require('./routes/Comment-route'))
-app.use(require('./routes/Friends-route'))
+app.use(require('./routes/Chat-route')(currentSocketClient))
+app.use(require('./routes/Comment-route')(currentSocketClient))
+app.use(require('./routes/Friends-route')(currentSocketClient))
 app.use(require('./routes/LoginRegister-route'))
 app.use(require('./routes/Message-route'))
-app.use(require('./routes/Posts-route'))
+app.use(require('./routes/Posts-route')(currentSocketClient))
 app.use(require('./routes/ProfileData-route'))
 app.use(require('./routes/TopPosts-route'))
 app.use(require('./routes/UserFilter-route'))

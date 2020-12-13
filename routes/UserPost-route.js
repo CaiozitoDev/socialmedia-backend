@@ -6,12 +6,12 @@ const mongoTimestampFormat = require('../utils/mongoTimestampFormat')
 const postCollection = require('../database/postModel')
 
 route.get('/userposts', (req, res, next) => {
-    const {db_user_id} = req.query
+    const {userid} = req.query
     const from = Number(req.query.from)
     const to = Number(req.query.to)
 
     let schema = yup.object().shape({
-        db_user_id: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
+        userid: yup.string().test('ObjectId', 'this is not a valid database ID', value => {
             return mongoose.isValidObjectId(value)
         }).required(),
         from: yup.number().integer().min(0).required(),
@@ -19,11 +19,11 @@ route.get('/userposts', (req, res, next) => {
     })
 
     schema.validate({
-        db_user_id,
+        userid,
         from,
         to
     }).then(() => {
-        postCollection.find({userId: mongoose.Types.ObjectId(db_user_id)}, {
+        postCollection.find({userId: mongoose.Types.ObjectId(userid)}, {
             like: false,
             love: false,
             comments: false
@@ -40,7 +40,7 @@ route.get('/userposts', (req, res, next) => {
                     }
                 })
     
-                postCollection.estimatedDocumentCount().then(value => {
+                postCollection.find({userId: mongoose.Types.ObjectId(userid)}).countDocuments().then(value => {
                     res.send({posts: doc, allPostsLength: value})
                 })
             } else {

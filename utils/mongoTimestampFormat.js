@@ -1,7 +1,7 @@
 module.exports = {
     toDate(mongoDate) {
         let usDate = new Date(mongoDate).toLocaleDateString()
-
+        
         return this.dateSlashed(usDate)
     },
 

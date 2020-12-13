@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
         type: Object,
         required: true
     },
-    activeChats: [[mongoose.Types.ObjectId]],
+    activeChats: [mongoose.Types.ObjectId],
     reactedPosts: [{
         type: Object,
         postId: {
@@ -66,7 +66,11 @@ const userSchema = new mongoose.Schema({
             },
             photo: String
         }],
-        sentRequests: [[mongoose.Types.ObjectId]]
+        sentRequests: [mongoose.Types.ObjectId]
+    },
+    sessionKey: {
+        required: true,
+        type: String
     },
     timestamp: {
         type: Date,

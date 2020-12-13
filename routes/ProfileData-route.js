@@ -20,7 +20,7 @@ route.get('/profile/:db_user_id', (req, res, next) => {
             .match({_id: mongoose.Types.ObjectId(db_user_id)})
             .project({
                 username: true,
-                userPhoto: true,
+                photo: true,
                 timestamp: true, 
                 friendsLength: {$size: '$friends.friendList'}   
             }).exec((err, doc) => {
@@ -29,11 +29,11 @@ route.get('/profile/:db_user_id', (req, res, next) => {
                         doc = doc[0]
         
                         res.send({
-                            src: doc.userPhoto,
+                            photo: doc.photo,
                             username: doc.username,
-                            userid: doc._id,
-                            friendslength: doc.friendsLength,
-                            date: mongoTimestampFormat.toDate(doc.timestamp)
+                            userId: doc._id,
+                            friendsLength: doc.friendsLength,
+                            timestamp: mongoTimestampFormat.toDate(doc.timestamp)
                         })
                     } else {
                         res.status(404).send({

@@ -9,7 +9,7 @@ route.get('/userfilter', (req, res, next) => {
     const to = Number(req.query.to)
 
     let schema = yup.object().shape({
-        username: yup.string().min(1).trim().strict().required(),
+        username: yup.string().trim().strict().notRequired(),
         from: yup.number().integer().min(0).required(),
         to: yup.number().integer().positive().required() // não sei se precisa ser múltiplo de 10
     })
@@ -26,7 +26,7 @@ route.get('/userfilter', (req, res, next) => {
             photo: true
         }).skip(from).limit(to).then(doc => {
             if(doc) {
-                usersCollection.find({username: {$regex: `^${username}.*$`, $options: 'i'}}).estimatedDocumentCount().then(value => {
+                usersCollection.find({username: {$regex: `^${username}.*$`, $options: 'i'}}).countDocuments().then(value => {
                     res.send({users: doc, allUsersLength: value})
                 })
             } else {
