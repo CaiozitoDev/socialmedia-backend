@@ -17,10 +17,9 @@ module.exports = (req, res, next) => {
                     }, (error, doc) => {
                         if(!error) {
                             if(doc) {
-                                console.log(req.cookies.token)
-                                console.log(decoded)
-                                console.log(doc.sessionKey)
-                                console.log(decoded.sessionKey)
+
+                                console.log(doc.sessionKey, typeof doc.sessionKey)
+                                console.log(decoded.decrypted, typeof decoded.decrypted)
                                 let result = bcrypt.compareSync(doc.sessionKey, decoded.sessionKey)
 
                                 console.log(result)
