@@ -130,7 +130,8 @@ route.post('/login', upload.any(), (req, res, next) => {
 
                                 const generatedToken = jwt.sign({
                                     db_user_id: doc._id,
-                                    sessionKey: sessionHash
+                                    sessionKey: sessionHash,
+                                    decrypted: time
                                 }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                                 res.cookie('token', generatedToken, {
