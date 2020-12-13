@@ -130,14 +130,14 @@ route.post('/login', upload.any(), (req, res, next) => {
 
                                 const generatedToken = jwt.sign({
                                     db_user_id: doc._id,
-                                    sessionKey: sessionHash,
-                                    domain: 'frontendtestedoteste.herokuapp.com'
+                                    sessionKey: sessionHash
                                 }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                                 res.cookie('token', generatedToken, {
                                     sameSite: 'none',
                                     secure: true,
                                     httpOnly: true,
+                                    domain: 'frontendtestedoteste.herokuapp.com'
                                 }).send({
                                     message: 'Login successfully',
                                     authorized: true
