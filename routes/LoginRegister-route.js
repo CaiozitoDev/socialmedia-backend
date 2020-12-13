@@ -135,7 +135,8 @@ route.post('/login', upload.any(), (req, res, next) => {
 
                                 res.cookie('token', generatedToken, {
                                     sameSite: 'none',
-                                    secure: true
+                                    secure: true,
+                                    httpOnly: true,
                                 }).send({
                                     message: 'Login successfully',
                                     authorized: true
