@@ -42,7 +42,11 @@ app.use(express.urlencoded({extended: true}))
 app.use(session({
     secret: process.env.SESSION_KEY,
     saveUninitialized: false,
-    resave: true
+    resave: true,
+    cookie: {
+        sameSite: 'none',
+        secure: true
+    }
 }))
 app.use(cookieParser())
 app.use(authMiddleware)

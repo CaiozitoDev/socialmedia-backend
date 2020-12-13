@@ -134,7 +134,6 @@ route.post('/login', upload.any(), (req, res, next) => {
                                 }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                                 res.cookie('token', generatedToken, {
-                                    domain: 'https://frontendtestedoteste.herokuapp.com',
                                     sameSite: 'none',
                                     secure: true
                                 }).send({
