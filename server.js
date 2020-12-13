@@ -46,7 +46,8 @@ app.use(session({
     cookie: {
         httpOnly: true,
         sameSite: 'none',
-        secure: true
+        secure: true,
+        domain: process.env.FRONTEND_URL
     }
 }))
 app.use(cookieParser())
