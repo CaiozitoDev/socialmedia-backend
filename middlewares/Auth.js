@@ -6,6 +6,7 @@ const ObjectId = require('mongoose').Types.ObjectId
 const usersCollection = require('../database/userModel')
 
 module.exports = (req, res, next) => {
+    console.log(req.cookies)
     if(['/login', '/register'].indexOf(req.url) == -1 && !req.session.user) {
         if(req.cookies.token) {
             jwt.verify(req.cookies.token, process.env.TOKEN_SECRET, (err, decoded) => {
