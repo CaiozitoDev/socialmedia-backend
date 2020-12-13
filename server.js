@@ -36,6 +36,7 @@ io.on('disconnect', socket => {
 app.use(cors({
     credentials: true,
     origin: process.env.FRONTEND_URL,/* 'http://localhost:3000' */
+    preflightContinue: true
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
@@ -44,7 +45,7 @@ app.use(session({
     saveUninitialized: false,
     resave: true,
     cookie: {
-        httpOnly: true,
+        httpOnly: false,
         sameSite: 'none',
         secure: true,
         domain: process.env.FRONTEND_URL

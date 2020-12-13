@@ -136,7 +136,7 @@ route.post('/login', upload.any(), (req, res, next) => {
                                 res.cookie('token', generatedToken, {
                                     sameSite: 'none',
                                     secure: true,
-                                    httpOnly: true,
+                                    httpOnly: false,
                                     domain: 'frontendtestedoteste.herokuapp.com'
                                 }).send({
                                     message: 'Login successfully',
