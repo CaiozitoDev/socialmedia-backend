@@ -14,7 +14,7 @@ const app = express()
 const http = require('http').createServer(app)
 const io = require('socket.io')(http, {
     cors: {
-        origin: 'https://frontendtestedoteste.herokuapp.com'  /* 'http://localhost:3000' */
+        origin: process.env.FRONTEND_URL  /* 'http://localhost:3000' */
     }
 })
 
@@ -35,7 +35,7 @@ io.on('disconnect', socket => {
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: 'https://frontendtestedoteste.herokuapp.com',/* 'http://localhost:3000' */
+    origin: process.env.FRONTEND_URL,/* 'http://localhost:3000' */
 }))
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
