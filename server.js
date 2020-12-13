@@ -14,7 +14,7 @@ const app = express()
 const http = require('http').createServer(app)
 const io = require('socket.io')(http, {
     cors: {
-        origin: 'https://frontendtestedoteste.herokuapp.com' /* 'http://localhost:3000' */
+        origin: 'https://frontendtestedoteste.herokuapp.com'  /* 'http://localhost:3000' */
     }
 })
 
