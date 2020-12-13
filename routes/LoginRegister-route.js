@@ -65,7 +65,7 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
     
                             const newUser = new usersCollection(userData)
     
-                            let sessionHash = bcrypt.hashSync(`${username}${time}`, 10)
+                            let sessionHash = bcrypt.hashSync(`${time}`, 10)
 
                             const generatedToken = jwt.sign({
                                 db_user_id: newUser._id,
@@ -126,7 +126,7 @@ route.post('/login', upload.any(), (req, res, next) => {
                             let time = `${doc.username}${Date.now()}`
 
                             doc.updateOne({$set: {sessionKey: time}}).then(() => {
-                                let sessionHash = bcrypt.hashSync(`${doc.username}${time}`, 10)
+                                let sessionHash = bcrypt.hashSync(`${time}`, 10)
 
                                 const generatedToken = jwt.sign({
                                     db_user_id: doc._id,
