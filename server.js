@@ -35,8 +35,9 @@ io.on('disconnect', socket => {
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: '*',/* 'http://localhost:3000' */
+    origin: process.env.FRONTEND_URL,/* 'http://localhost:3000' */
 }))
+app.set('trust proxy', 1)
 app.use(express.json())
 app.use(express.urlencoded({extended: true}))
 app.use(session({
@@ -44,10 +45,9 @@ app.use(session({
     saveUninitialized: false,
     resave: true,
     cookie: {
-        httpOnly: false,
+        httpOnly: true,
         sameSite: 'none',
-        secure: true,
-        domain: process.env.FRONTEND_URL
+        secure: process.env.NODE_ENV === "production"
     }
 }))
 app.use(cookieParser())

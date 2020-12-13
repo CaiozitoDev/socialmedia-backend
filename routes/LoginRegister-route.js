@@ -80,7 +80,11 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
 
                             newUser.save()
                                 .then(() => {
-                                    res.cookie('token', generatedToken).send({
+                                    res.cookie('token', generatedToken, {
+                                        sameSite: 'none',
+                                        secure: true,
+                                        httpOnly: true
+                                    }).send({
                                         message: 'Registration successfully',
                                         authorized: true
                                     })
@@ -136,8 +140,7 @@ route.post('/login', upload.any(), (req, res, next) => {
                                 res.cookie('token', generatedToken, {
                                     sameSite: 'none',
                                     secure: true,
-                                    httpOnly: false,
-                                    domain: 'frontendtestedoteste.herokuapp.com'
+                                    httpOnly: true
                                 }).send({
                                     message: 'Login successfully',
                                     authorized: true
