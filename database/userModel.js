@@ -76,7 +76,7 @@ const userSchema = new mongoose.Schema({
     timestamp: {
         type: Date,
         default: () => {
-            return new Date(moment('pt-BR').format())
+            return new Date(moment().locale('pt-BR').format())
         }
     }
 })
