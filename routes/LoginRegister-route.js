@@ -81,8 +81,8 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
                             newUser.save()
                                 .then(() => {
                                     res.cookie('token', generatedToken, {
-                                        sameSite: 'none',
-                                        secure: true,
+                                        sameSite: process.env.NODE_ENV !== "production" ? false : 'none',
+                                        secure: process.env.NODE_ENV === "production",
                                         httpOnly: true
                                     }).send({
                                         message: 'Registration successfully',
@@ -138,8 +138,8 @@ route.post('/login', upload.any(), (req, res, next) => {
                                 }, process.env.TOKEN_SECRET, {expiresIn: '7d'})
 
                                 res.cookie('token', generatedToken, {
-                                    sameSite: 'none',
-                                    secure: true,
+                                    sameSite: process.env.NODE_ENV !== "production" ? false : 'none',
+                                    secure: process.env.NODE_ENV === "production",
                                     httpOnly: true
                                 }).send({
                                     message: 'Login successfully',
@@ -155,6 +155,14 @@ route.post('/login', upload.any(), (req, res, next) => {
                 }
         }).catch(err => next(err))
     }).catch(err => next(err))
+})
+
+route.get('/logoff', (req, res) => {
+    req.session.user = null
+
+    res.clearCookie('token').send({
+        message: 'User disconnected successfully.'
+    })
 })
 
 route.get('/', (req, res) => {

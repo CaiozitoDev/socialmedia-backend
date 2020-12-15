@@ -2,6 +2,7 @@ const route = require('express').Router()
 const mongoose = require('mongoose')
 const yup = require('yup')
 const mongoTimestampFormat = require('../utils/mongoTimestampFormat')
+const moment = require('moment')
 
 const usersCollection = require('../database/userModel')
 const chatCollection = require('../database/chatModel')
@@ -123,20 +124,24 @@ module.exports = function(io) {
             username
         }, {
             abortEarly: false
-        }).then(() => {
+        }).then(() => { // PODERIA SER APENAS UM "UPDATEONE" EMBAIXO!!!!!!!!!!!!!!!
             chatCollection.findOneAndUpdate({ 'members.userId': mongoose.Types.ObjectId(db_user_id), 'members.username': username, _id: mongoose.Types.ObjectId(chatid)},
             {$push: 
                 {messages: {
                     userId: mongoose.Types.ObjectId(db_user_id),
                     username,
                     content,
-                    timestamp: new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()))
+                    timestamp: new Date(moment().locale('pt-BR').format())
                 }}
             }).then(doc => {
                 if(doc) {
                     io.io.emit(`${chatid}_newmessage`)
                     io.io.emit(`${userid}_newmessage`)
                     io.io.emit(`${userid}_messagesnotification`)
+                    io.io.emit(`${userid}_browsernotification`, {
+                        username,
+                        content
+                    })
 
                     res.send({
                         message: 'Message sent successfully.'

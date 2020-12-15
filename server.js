@@ -14,7 +14,7 @@ const app = express()
 const http = require('http').createServer(app)
 const io = require('socket.io')(http, {
     cors: {
-        origin: process.env.FRONTEND_URL  /* 'http://localhost:3000' */
+        origin: process.env.FRONTEND_URL
     }
 })
 
@@ -35,7 +35,7 @@ io.on('disconnect', socket => {
 // MIDDLEWARES
 app.use(cors({
     credentials: true,
-    origin: process.env.FRONTEND_URL,/* 'http://localhost:3000' */
+    origin: process.env.FRONTEND_URL
 }))
 app.set('trust proxy', 1)
 app.use(express.json())
@@ -46,7 +46,7 @@ app.use(session({
     resave: true,
     cookie: {
         httpOnly: true,
-        sameSite: 'none',
+        sameSite: process.env.NODE_ENV !== "production" ? false : 'none',
         secure: process.env.NODE_ENV === "production"
     }
 }))

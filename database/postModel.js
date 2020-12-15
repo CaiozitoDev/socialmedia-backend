@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const moment = require('moment')
 
 const postSchema = new mongoose.Schema({
     userId: {
@@ -47,7 +48,7 @@ const postSchema = new mongoose.Schema({
     timestamp: {
         type: Date,
         default: () => {
-            return new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), new Date().getHours(), new Date().getMinutes(), new Date().getSeconds()));
+            return new Date(moment('pt-BR').format())
         }
     }
 })
