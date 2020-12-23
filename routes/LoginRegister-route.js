@@ -158,9 +158,12 @@ route.post('/login', upload.any(), (req, res, next) => {
 })
 
 route.get('/logoff', (req, res) => {
-    req.session.user = null
+    req.session.destroy()
 
-    res.clearCookie('token').send({
+    res.clearCookie('token', {
+        sameSite: 'none',
+        secure: true
+    }).send({
         message: 'User disconnected successfully.'
     })
 })
