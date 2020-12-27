@@ -73,7 +73,7 @@ module.exports = function(io) {
                 content: true,
                 userId: true,
                 timestamp: true
-            }).sort({_id: -1}).skip(from).limit(to).then(doc => {
+            }).sort({_id: -1}).skip(from).limit(10).then(doc => {
                 if(doc) {
                     doc = doc.map(post => {
                         return {
