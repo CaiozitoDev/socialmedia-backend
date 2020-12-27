@@ -27,8 +27,8 @@ route.post('/register', upload.single('photo'), (req, res, next) => {
     const profilePhoto = req.file
 
     const schema = yup.object().shape({
-        login: yup.string().required().min(4).trim().strict().matches(/^[a-zA-Z0-9@_.-]*$/, 'Special characters and spaces are not allowed.'),
-        username: yup.string().required().min(3).trim().strict().matches(/^[a-zA-Z\s]*$/, 'Special characters are not allowed.'),
+        login: yup.string().required().min(4).trim().strict().matches(/^[a-zA-Z0-9@_.-]*$/, 'Special characters and spaces are not allowed on login field.'),
+        username: yup.string().required().min(3).trim().strict().matches(/^[a-zA-Z\s]*$/, 'Special characters and numbers are not allowed on username field.'),
         profilePhoto: yup.object().shape({
             size: yup.number().moreThan(0).required(),
             mimetype: yup.string().equals(['image/png', 'image/jpg', 'image/jpeg']).required()
