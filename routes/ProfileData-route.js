@@ -25,7 +25,7 @@ route.get('/profile/:db_user_id', (req, res, next) => {
                 friendsLength: {$size: '$friends.friendList'}   
             }).exec((err, doc) => {
                 if(!err) {
-                    if(doc) {
+                    if(doc.length) {
                         doc = doc[0]
         
                         res.send({
